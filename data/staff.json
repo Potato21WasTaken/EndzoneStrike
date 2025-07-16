@@ -1,0 +1,58 @@
+{
+  "staff": [
+    {
+      "username": "Maiker",
+      "discordId": "1118198263154229299",
+      "age": 16,
+      "dob": "09/20/2008",
+      "rank": "Junior Moderator",
+      "hired": "07/15/2025",
+      "accountCreated": 1752692431523
+    },
+    {
+      "username": "bachiraglazer.",
+      "discordId": "965361825841565747",
+      "age": 15,
+      "dob": "05/24/2010",
+      "rank": "Junior Moderator",
+      "hired": "07/15/2025",
+      "accountCreated": 1752695558296
+    },
+    {
+      "username": "vixxontiktok",
+      "discordId": "957369564381995038",
+      "age": 14,
+      "dob": "01/30/2011",
+      "rank": "Junior Moderator",
+      "hired": "07/15/2025",
+      "accountCreated": 1752697186247
+    },
+    {
+      "username": "Azure159",
+      "discordId": "1124097740905918534",
+      "age": 14,
+      "dob": "09/23/2010",
+      "rank": "Junior Moderator",
+      "hired": "07/15/2025",
+      "accountCreated": 1752697278471
+    },
+    {
+      "username": "devonteistoobig_40704",
+      "discordId": "1317270840965857290",
+      "age": 15,
+      "dob": "04/21/2010",
+      "rank": "Administrator",
+      "hired": "07/5/2025",
+      "accountCreated": 1752698573501
+    },
+    {
+      "username": "otigh",
+      "discordId": "1034975577079287808",
+      "age": 13,
+      "dob": "10/18/2011",
+      "rank": "Junior Moderator",
+      "hired": "07/15/2025",
+      "accountCreated": 1752699498305
+    }
+  ]
+}
