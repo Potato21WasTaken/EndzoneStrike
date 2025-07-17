@@ -4,22 +4,29 @@ const {
   TextInputBuilder,
   TextInputStyle,
   ActionRowBuilder,
-  EmbedBuilder,
-  PermissionFlagsBits
+  EmbedBuilder
 } = require('discord.js');
 
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config(); // Load environment variables
 
 const staffFile = path.join(__dirname, '..', 'data', 'staff.json');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('staffupdate')
-    .setDescription('✏️ Update an existing staff entry.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .setDescription('✏️ Update an existing staff entry.'),
 
   async execute(interaction) {
+    const permsRoleId = process.env.PERMS_ROLE_ID;
+    if (!interaction.member.roles.cache.has(permsRoleId)) {
+      return interaction.reply({
+        content: '❌ You do not have the required role to use this command.',
+        ephemeral: true,
+      });
+    }
+
     const modal = new ModalBuilder()
       .setCustomId('staff_update_modal')
       .setTitle('Update Staff Entry')
@@ -114,7 +121,6 @@ module.exports = {
 
     await interaction.reply({ content: '✅ Staff member updated.', ephemeral: true });
 
-    // Send log embed if changes were made
     if (changes.length > 0 && process.env.MODLOG_CHANNEL_ID) {
       const logChannel = interaction.guild.channels.cache.get(process.env.MODLOG_CHANNEL_ID);
       if (logChannel) {
