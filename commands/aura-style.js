@@ -8,64 +8,100 @@ let cooldowns = JSON.parse(fs.readFileSync(cooldownPath, 'utf8'));
 
 const auraStyles = [
   {
-    name: "Golden Retriever BF Energy",
+    name: "Golden Retriever Energy",
     emoji: "🐶",
-    description: "You're sunshine in human form. Gives forehead kisses, opens doors, and always sends “let me know you got home safe.”",
-    tags: ["loyal", "goofy", "good texter", "hypeman"]
+    description: "Always cheerful, helpful, and kind. The one who reminds everyone about game night.",
+    tags: ["friendly", "loyal", "positive", "team player"]
   },
   {
-    name: "Black Cat GF Energy",
+    name: "Black Cat Energy",
     emoji: "🐈‍⬛",
-    description: "Looks like they’d ghost you, but actually sends 'are you okay?' at 2am. Tough exterior, soft soul.",
-    tags: ["mysterious", "sweet", "observant", "chill"]
+    description: "Quiet and thoughtful. Observes everything, speaks only when it matters.",
+    tags: ["calm", "mysterious", "deep thinker", "chill"]
   },
   {
-    name: "Delulu Dreamer",
-    emoji: "💅",
-    description: "Fully convinced their crush is obsessed with them. Believes red flags are just passion.",
-    tags: ["main character", "manifesting", "unbothered"]
+    name: "Big Dreamer",
+    emoji: "🌠",
+    description: "Always planning their next big idea. Believes anything is possible.",
+    tags: ["creative", "optimistic", "goal-setter"]
   },
   {
-    name: "Academic Weapon",
+    name: "Study Pro",
     emoji: "📚",
-    description: "Color-coded notes. Slays group projects. Gives 100%, even for a 5-point quiz.",
-    tags: ["focused", "organized", "matcha-powered"]
+    description: "Color-coded notes. Always prepared. Helps others before tests.",
+    tags: ["organized", "focused", "helpful"]
   },
   {
-    name: "Chronically Online",
-    emoji: "💻",
-    description: "Can quote 3 TikToks in one sentence. Might diagnose people in the group chat.",
-    tags: ["terminally online", "brainrot", "lore master"]
+    name: "Online Explorer",
+    emoji: "🧭",
+    description: "Knows every meme and video before they trend. Digital adventurer.",
+    tags: ["tech-savvy", "curious", "funny"]
   },
   {
-    name: "Low Effort Rizz",
-    emoji: "🧢",
-    description: "Pulls without trying. Said 'yo' and made someone fall in love.",
-    tags: ["cool", "effortless", "natural charm"]
+    name: "Effortless Cool",
+    emoji: "🕶️",
+    description: "Never tries too hard but still stands out. Confident in their own way.",
+    tags: ["confident", "stylish", "laid-back"]
   },
   {
-    name: "Soft Launch Pro",
-    emoji: "🦋",
-    description: "Posts a hand on their story and deletes it. The caption says, 'he fell first.'",
-    tags: ["aesthetic", "mysterious", "strategic"]
+    name: "Subtle Star",
+    emoji: "✨",
+    description: "Doesn’t say much but always impresses when they do. Quiet confidence.",
+    tags: ["shy", "unique", "impressive"]
   },
   {
-    name: "Mystic Baddie",
-    emoji: "🔮",
-    description: "Sages their phone. Flirts by reading your birth chart.",
-    tags: ["cosmic", "balanced", "flirty"]
+    name: "Cosmic Thinker",
+    emoji: "🌌",
+    description: "Always wondering about space, life, and deep stuff.",
+    tags: ["thoughtful", "philosophical", "daydreamer"]
   },
   {
-    name: "Snack Energy",
-    emoji: "🧃",
-    description: "Hot *and* funny. A group chat menace but lovable.",
-    tags: ["attractive", "chaotic", "funny"]
+    name: "Class Clown",
+    emoji: "🎭",
+    description: "The funny one who keeps everyone smiling, even during boring moments.",
+    tags: ["funny", "energetic", "lighthearted"]
   },
   {
-    name: "Battery at 3%",
-    emoji: "🪫",
-    description: "Running on vibes and caffeine. Wants rest but keeps watching Netflix.",
-    tags: ["tired", "relatable", "burnt out"]
+    name: "Running on Vibes",
+    emoji: "⚡",
+    description: "Always doing something, even when tired. Lives on snacks and motivation.",
+    tags: ["energetic", "relatable", "driven"]
+  },
+  {
+    name: "Nature Walker",
+    emoji: "🌳",
+    description: "Loves the outdoors. Always taking chill walks or snapping photos of trees.",
+    tags: ["calm", "peaceful", "nature lover"]
+  },
+  {
+    name: "Pixel Artist",
+    emoji: "🎨",
+    description: "Always creating something. Whether it’s digital art or doodles in class.",
+    tags: ["artsy", "imaginative", "creative"]
+  },
+  {
+    name: "Early Bird",
+    emoji: "🌞",
+    description: "Up early and already got things done while everyone else is waking up.",
+    tags: ["motivated", "productive", "morning person"]
+  },
+  {
+    name: "Quiet Genius",
+    emoji: "🧠",
+    description: "Doesn't brag but knows a lot. Surprises everyone with their knowledge.",
+    tags: ["smart", "modest", "thoughtful"]
+  },
+  {
+    name: "Kind Leader",
+    emoji: "🫶",
+    description: "Takes charge without bossing. Encourages others to shine too.",
+    tags: ["supportive", "reliable", "leader"]
+  },
+  {
+    name: "The Helper",
+    emoji: "🛟",
+    description: "First to lend a hand. Makes sure no one is left out or struggling.",
+    tags: ["caring", "thoughtful", "compassionate"]
   }
 ];
 
@@ -90,7 +126,7 @@ module.exports = {
 
     if (hasUsedToday(userId)) {
       return interaction.reply({
-        content: "🕒 You've already checked your aura style today. Come back tomorrow!",
+        content: "🕒 Wait 24 hours for a new aura-style!",
         ephemeral: true
       });
     }

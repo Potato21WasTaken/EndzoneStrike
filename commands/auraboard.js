@@ -1,40 +1,52 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-
-const AURA_FILE = path.join(__dirname, '..', 'data', 'aura.json');
+const Aura = require('../data/models/Aura');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('auraboard')
-    .setDescription('📊 View the top 15 aura scores'),
+    .setDescription('📊 View the top 15 aura scores (and your score if not ranked)'),
 
   async execute(interaction) {
-    if (!fs.existsSync(AURA_FILE)) {
-      return interaction.reply('⚠️ No aura data found.');
+    await interaction.deferReply({ ephemeral: false });
+
+    let top, all;
+    try {
+      top = await Aura.find({ aura: { $exists: true } })
+        .sort({ aura: -1 })
+        .limit(15)
+        .select('discordId aura bestAura auraRolls');
+      all = await Aura.find({ aura: { $exists: true } })
+        .sort({ aura: -1 })
+        .select('discordId aura bestAura auraRolls');
+    } catch (err) {
+      console.error(`AuraBoard DB error for ${interaction.user.username}:`, err);
+      return interaction.editReply({ content: 'Error loading leaderboard.' });
     }
 
-    const raw = fs.readFileSync(AURA_FILE, 'utf8');
-    const data = JSON.parse(raw);
-    if (!data.users.length) {
-      return interaction.reply('📭 No aura scores yet.');
-    }
+    const userId = interaction.user.id;
+    const userRank = all.findIndex(u => u.discordId === userId) + 1;
+    const userAura = all.find(u => u.discordId === userId)?.aura;
 
-    const top = [...data.users]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 15); // 🔥 Limit to top 15
+    let description;
+    if (!top.length) {
+      description = '📭 No aura scores yet.';
+    } else {
+      description = top
+        .map((u, i) => `**${i + 1}.** <@${u.discordId}> — ${u.aura.toLocaleString()}`)
+        .join('\n');
+      // If user is not in top 15, show their rank below the board
+      if (userAura !== undefined && userRank > 15) {
+        description += `\n\n**Your Rank:**\n**${userRank}.** <@${userId}> — ${userAura.toLocaleString()} (you)`;
+      }
+    }
 
     const embed = new EmbedBuilder()
       .setTitle('🔮 Aura Leaderboard — Top 15')
       .setColor(0x9932CC)
-      .setDescription(
-        top
-          .map((u, i) => `**${i + 1}.** ${u.username} — ${u.score.toLocaleString()}`)
-          .join('\n')
-      )
+      .setDescription(description)
       .setFooter({ text: 'Based on your most recent aura roll' })
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   }
 };

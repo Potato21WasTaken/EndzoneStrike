@@ -71,7 +71,7 @@ module.exports = {
     const messages = await modlogChannel.messages.fetch({ limit: 100 });
     const logs = [];
 
-    const actionKeywords = ['warn', 'kicked', 'mute', 'banned', 'timed out'];
+    const actionKeywords = ['warn', 'kicked', 'mute', 'banned', 'timed out', 'timeout'];
     const excludeKeywords = ['unwarn', 'unmute', 'unban', 'untimeout'];
 
     for (const msg of messages.values()) {

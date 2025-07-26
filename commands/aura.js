@@ -1,22 +1,17 @@
-const { SlashCommandBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-
-const AURA_FILE = path.join(__dirname, '..', 'data', 'aura.json');
-const OWNER_ID = '531654863663267851'; // your Discord ID
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const Aura = require('../data/models/Aura');
+const OWNER_ID = '531654863663267851';
 
 function getAuraScore(userId) {
   if (userId === OWNER_ID) return 1_000_000;
-
   const chance = Math.random();
-
-  if (chance < 0.40) return Math.floor(Math.random() * 1_000);               // 0–999
-  if (chance < 0.65) return Math.floor(Math.random() * 9_000) + 1_001;       // 1,001–10,000
-  if (chance < 0.85) return Math.floor(Math.random() * 90_000) + 10_001;     // 10,001–100,000
-  if (chance < 0.97) return Math.floor(Math.random() * 400_000) + 100_001;   // 100,001–500,000
-  if (chance < 0.996) return Math.floor(Math.random() * 250_000) + 500_001;  // 500,001–750,000
-  if (chance < 0.999) return Math.floor(Math.random() * 249_999) + 750_001;  // 750,001–999,999
-  return 1_000_000; // max aura
+  if (chance < 0.40) return Math.floor(Math.random() * 1_000);
+  if (chance < 0.65) return Math.floor(Math.random() * 9_000) + 1_001;
+  if (chance < 0.85) return Math.floor(Math.random() * 90_000) + 10_001;
+  if (chance < 0.97) return Math.floor(Math.random() * 400_000) + 100_001;
+  if (chance < 0.996) return Math.floor(Math.random() * 250_000) + 500_001;
+  if (chance < 0.999) return Math.floor(Math.random() * 249_999) + 750_001;
+  return 1_000_000;
 }
 
 function getNote(score) {
@@ -28,34 +23,45 @@ function getNote(score) {
   return '👑 MAX AURA. You are the chosen one.';
 }
 
-function saveAura(userId, username, score) {
-  let data = { users: [] };
-  if (fs.existsSync(AURA_FILE)) {
-    data = JSON.parse(fs.readFileSync(AURA_FILE, 'utf8'));
-  }
-
-  const existing = data.users.find(u => u.id === userId);
-  if (existing) {
-    existing.score = score;
-    existing.username = username;
-  } else {
-    data.users.push({ id: userId, username, score });
-  }
-
-  fs.writeFileSync(AURA_FILE, JSON.stringify(data, null, 2));
-}
-
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('aura')
     .setDescription('🔮 Get your aura score (1 - 1,000,000)'),
 
   async execute(interaction) {
-    const score = getAuraScore(interaction.user.id);
-    const note = getNote(score);
-    saveAura(interaction.user.id, interaction.user.username, score);
+    await interaction.deferReply({ ephemeral: false });
 
-    await interaction.reply(`🔮 Your aura is **${score.toLocaleString()}**.\n${note}`);
+    const userId = interaction.user.id;
+    let auraUser;
+    try {
+      auraUser = await Aura.findOne({ discordId: userId });
+
+      const score = getAuraScore(userId);
+      const note = getNote(score);
+
+      if (!auraUser) {
+        auraUser = await Aura.create({
+          discordId: userId,
+          aura: score,
+          bestAura: score,
+          auraRolls: 1
+        });
+      } else {
+        auraUser.aura = score;
+        auraUser.auraRolls = (auraUser.auraRolls || 0) + 1;
+        if (score > (auraUser.bestAura || 0)) auraUser.bestAura = score;
+        await auraUser.save();
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle('🔮 Your Aura')
+        .setDescription(`Your aura is **${score.toLocaleString()}**.\n${note}`)
+        .setColor(0xA020F0);
+
+      await interaction.editReply({ embeds: [embed] });
+    } catch (err) {
+      console.error(`Aura save error for ${interaction.user.username}:`, err);
+      await interaction.editReply({ content: 'Error saving your aura. Please try again later.' });
+    }
   }
 };
-

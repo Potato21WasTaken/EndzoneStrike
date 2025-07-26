@@ -1,34 +1,167 @@
-{
-  "users": [
-    {
-      "id": "531654863663267851",
-      "username": "patato21_.",
-      "score": 1000000
+[
+  {
+    "_id": {
+      "$oid": "1"
     },
-    {
-      "id": "1061851893288161360",
-      "username": "modstyman",
-      "score": 9465
+    "discordId": "patato21_",
+    "aura": 1000000,
+    "bestAura": 1000000,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "2"
     },
-    {
-      "id": "866727120729145366",
-      "username": "ixacy",
-      "score": 679592
+    "discordId": "abedgmxl1_03648",
+    "aura": 874010,
+    "bestAura": 874010,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "3"
     },
-    {
-      "id": "1256623608726425624",
-      "username": "abedgmxl1_03648",
-      "score": 874010
+    "discordId": "zvh8",
+    "aura": 690367,
+    "bestAura": 690367,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "4"
     },
-    {
-      "id": "1118198263154229299",
-      "username": "maikertv",
-      "score": 659976
+    "discordId": "shinkuken333",
+    "aura": 630802,
+    "bestAura": 630802,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "5"
     },
-    {
-      "id": "1034975577079287808",
-      "username": "otigh",
-      "score": 413063
-    }
-  ]
-}
+    "discordId": "otigh",
+    "aura": 574160,
+    "bestAura": 574160,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6"
+    },
+    "discordId": "tankz7910",
+    "aura": 360915,
+    "bestAura": 360915,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "7"
+    },
+    "discordId": "jadenandbuds",
+    "aura": 271728,
+    "bestAura": 271728,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "8"
+    },
+    "discordId": "uranium8570",
+    "aura": 80403,
+    "bestAura": 80403,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "9"
+    },
+    "discordId": "modstyman",
+    "aura": 9465,
+    "bestAura": 9465,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "10"
+    },
+    "discordId": "threefivenine",
+    "aura": 7695,
+    "bestAura": 7695,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "11"
+    },
+    "discordId": "kyr5990a",
+    "aura": 3443,
+    "bestAura": 3443,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "12"
+    },
+    "discordId": "ixacy",
+    "aura": 993,
+    "bestAura": 993,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "13"
+    },
+    "discordId": "z_a_y_1",
+    "aura": 804,
+    "bestAura": 804,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "14"
+    },
+    "discordId": "giyuu2872",
+    "aura": 236,
+    "bestAura": 236,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "15"
+    },
+    "discordId": "maikertv",
+    "aura": 11,
+    "bestAura": 11,
+    "auraRolls": 0,
+    "boostsActive": [],
+    "__v": 0
+  }
+]

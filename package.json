@@ -15,6 +15,8 @@
     "discord-api-types": "^0.38.16",
     "discord.js": "^14.14.1",
     "dotenv": "^17.2.0",
+    "mongodb": "^6.18.0",
+    "mongoose": "^8.16.4",
     "rss-parser": "^3.13.0"
   }
 }

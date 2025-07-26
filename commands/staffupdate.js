@@ -121,8 +121,8 @@ module.exports = {
 
     await interaction.reply({ content: '✅ Staff member updated.', ephemeral: true });
 
-    if (changes.length > 0 && process.env.MODLOG_CHANNEL_ID) {
-      const logChannel = interaction.guild.channels.cache.get(process.env.MODLOG_CHANNEL_ID);
+    if (changes.length > 0 && process.env.STAFFLOG_CHANNEL_ID) {
+      const logChannel = interaction.guild.channels.cache.get(process.env.STAFFLOG_CHANNEL_ID);
       if (logChannel) {
         const logEmbed = new EmbedBuilder()
           .setTitle('📥 Staff Entry Updated')
