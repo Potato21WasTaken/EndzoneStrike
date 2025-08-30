@@ -1,3 +1,22 @@
+# Node modules
 node_modules/
+
+# Environment variables
 .env
-.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+
+# Build output
+dist/
+build/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
