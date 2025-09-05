@@ -12,8 +12,16 @@ const userSchema = new mongoose.Schema({
   ],
   gifPerms: { type: Boolean, default: false },
   cooldowns: {
-    rob: { type: Date, default: new Date(0) }
-  }
+    rob: { type: Date, default: new Date(0) },
+    work: { type: Map, of: Date, default: {} }
+  },
+  hoursWorked: { type: Map, of: Number, default: {} },
+  inventory: [
+    {
+      item: { type: String },
+      quantity: { type: Number, default: 1 }
+    }
+  ]
 });
 
 module.exports = mongoose.model('User', userSchema);

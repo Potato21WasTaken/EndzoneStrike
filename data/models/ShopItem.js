@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const shopItemSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true }, // e.g., "Small Luck Boost"
+  name: { type: String, required: true, unique: true }, // e.g., "Laptop"
   description: { type: String },
   price: { type: Number, required: true },
   stock: { type: Number, default: 0 }, // -1 for unlimited
