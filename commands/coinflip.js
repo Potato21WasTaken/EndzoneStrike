@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const EconomyUser = require('../data/models/EconomyUser');
+const User = require('../data/models/User');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -25,7 +25,6 @@ module.exports = {
     const side = interaction.options.getString('side');
     const amount = interaction.options.getInteger('amount');
 
-    // Validation
     if (amount <= 0) {
       return interaction.reply({
         content: '❌ Amount must be a positive number!',
@@ -33,10 +32,10 @@ module.exports = {
       });
     }
 
-    let econUser = await EconomyUser.findOne({ discordId: userId });
-    if (!econUser) econUser = await EconomyUser.create({ discordId: userId });
+    let user = await User.findOne({ discordId: userId });
+    if (!user) user = await User.create({ discordId: userId });
 
-    if (econUser.balance < amount) {
+    if (user.balance < amount) {
       return interaction.reply({
         content: '❌ You do not have enough money to make this bet.',
         ephemeral: false
@@ -48,13 +47,12 @@ module.exports = {
     let win = side === flip;
 
     if (win) {
-      econUser.balance += amount; // Win: get double (add amount, since original bet is subtracted below)
+      user.balance += amount; // Win: get double (add amount, since original bet is subtracted below)
     } else {
-      econUser.balance -= amount; // Lose: subtract bet
+      user.balance -= amount; // Lose: subtract bet
     }
-    await econUser.save();
+    await user.save();
 
-    // Result message
     const embed = new EmbedBuilder()
       .setTitle('🪙 Coinflip Results')
       .setDescription(

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const EconomyUser = require('../data/models/EconomyUser');
+const User = require('../data/models/User');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -12,15 +12,17 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    await interaction.deferReply({ ephemeral: false }); // <-- ADD THIS LINE
+
     const target = interaction.options.getUser('user') || interaction.user;
-    let econUser = await EconomyUser.findOne({ discordId: target.id });
-    if (!econUser) econUser = await EconomyUser.create({ discordId: target.id });
+    let user = await User.findOne({ discordId: target.id });
+    if (!user) user = await User.create({ discordId: target.id });
 
     const embed = new EmbedBuilder()
       .setTitle(`💰 Balance for ${target.username}`)
-      .setDescription(`**$${econUser.balance}**`)
+      .setDescription(`**$${user.balance ?? 0}**`)
       .setColor(0x00ff99);
 
-    await interaction.reply({ embeds: [embed], ephemeral: false });
+    await interaction.editReply({ embeds: [embed] }); // <-- USE editReply
   }
 };

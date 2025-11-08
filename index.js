@@ -79,7 +79,7 @@ client.on('messageCreate', async (message) => {
   ) {
     // Example: set_activity Playing My New Game
     const args = message.content.split(' ').slice(1);
-    const type = args.shift(); // Playing, Watching, etc.
+    const type = args.shift();
     const name = args.join(' ');
 
     let activityType = ActivityType.Playing;
@@ -98,7 +98,7 @@ client.on('messageCreate', async (message) => {
 
 // === NoPing Role Protection with Offense Tracking and Ping Bypass ===
 const NO_PING_ROLE_ID = '1396667715132854293'; // Replace with actual @noping role ID
-const PING_BYPASS_ROLE_ID = process.env.PING_BYPASS_ROLE_ID; // Add this to your .env
+const PING_BYPASS_ROLE_ID = process.env.PING_BYPASS_ROLE_ID;
 const offensePath = path.join(__dirname, 'data', 'offenseData.json');
 
 function loadOffenseData() {
@@ -194,7 +194,6 @@ client.on('interactionCreate', async (interaction) => {
     if (!command) return;
 
     try {
-      // Remove global deferReply! Each command handles its own deferReply.
       await command.execute(interaction, client);
     } catch (err) {
       console.error(err);
@@ -210,34 +209,49 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.isButton()) {
     (async () => {
       const [action, suggesterId] = interaction.customId.split('_');
-
-      // 🔐 Role-based permission check
-      const adminRole = interaction.guild.roles.cache.get(process.env.ADMIN_ROLE_ID); // use ID for reliability
+      const adminRole = interaction.guild.roles.cache.get(process.env.ADMIN_ROLE_ID);
 
       if (!adminRole) {
-        return interaction.reply({
-          content: '❌ The Administrator role (by ID) could not be found. Check your ADMIN_ROLE_ID in .env.',
-          ephemeral: true
-        });
+        try {
+          return await interaction.reply({
+            content: '❌ The Administrator role (by ID) could not be found. Check your ADMIN_ROLE_ID in .env.',
+            ephemeral: true
+          });
+        } catch {}
       }
 
       const memberRoles = interaction.member.roles.cache;
       const hasAdminOrHigher = memberRoles.some(role => role.position >= adminRole.position);
 
-      // 🧾 Only allow the suggester to edit, otherwise require admin+ role
+      // Only allow the suggester to edit, otherwise require admin+ role
       const isSuggester = interaction.user.id === suggesterId;
       if (action === 'edit' && !isSuggester) {
-        return interaction.reply({ content: '❌ Only the suggestion author can edit it.', ephemeral: true });
+        try {
+          return await interaction.reply({ content: '❌ Only the suggestion author can edit it.', ephemeral: true });
+        } catch {}
       }
 
       if (['accept', 'decline', 'notes'].includes(action) && !hasAdminOrHigher) {
-        return interaction.reply({
-          content: '❌ Only users with the "Administrator" role or higher can use this.',
-          ephemeral: true
-        });
+        try {
+          return await interaction.reply({
+            content: '❌ Only users with the "Administrator" role or higher can use this.',
+            ephemeral: true
+          });
+        } catch {}
       }
 
       const embed = interaction.message.embeds[0];
+      if (!embed) {
+        try {
+          return await interaction.reply({
+            content: '❌ This suggestion message has no embed to update.',
+            ephemeral: true
+          });
+        } catch (err) {
+          if (err.code !== 10062) console.error(err);
+          return;
+        }
+      }
       const updatedEmbed = { ...embed.data };
 
       if (action === 'accept') {
@@ -295,6 +309,9 @@ client.on('interactionCreate', async (interaction) => {
       const messageId = interaction.customId.split('_').pop();
       const message = await interaction.channel.messages.fetch(messageId);
       const embed = message.embeds[0];
+      if (!embed) {
+        return interaction.reply({ content: '❌ No embed to update.', ephemeral: true });
+      }
       const updatedEmbed = { ...embed.data };
 
       if (interaction.customId.startsWith('edit_modal')) {

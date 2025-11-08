@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const EconomyUser = require('../data/models/EconomyUser');
+const User = require('../data/models/User');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -28,9 +28,9 @@ module.exports = {
       return interaction.reply({ content: '❌ You cannot pay yourself.', ephemeral: false });
     }
 
-    const sender = await EconomyUser.findOne({ discordId: senderId });
-    let receiver = await EconomyUser.findOne({ discordId: recipient.id });
-    if (!receiver) receiver = await EconomyUser.create({ discordId: recipient.id });
+    const sender = await User.findOne({ discordId: senderId });
+    let receiver = await User.findOne({ discordId: recipient.id });
+    if (!receiver) receiver = await User.create({ discordId: recipient.id });
 
     if (!sender || sender.balance < amount) {
       return interaction.reply({ content: '❌ You do not have enough money.', ephemeral: false });

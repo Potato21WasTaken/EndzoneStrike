@@ -13,7 +13,8 @@ const userSchema = new mongoose.Schema({
   gifPerms: { type: Boolean, default: false },
   cooldowns: {
     rob: { type: Date, default: new Date(0) },
-    work: { type: Map, of: Date, default: {} }
+    work: { type: Map, of: Date, default: {} },
+      daily: { type: Date, default: new Date(0) }
   },
   hoursWorked: { type: Map, of: Number, default: {} },
   inventory: [
