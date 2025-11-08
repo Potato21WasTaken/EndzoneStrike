@@ -52,11 +52,20 @@ module.exports = {
       // Check if user can afford and if item is in stock
       const canAfford = user.balance >= item.price;
       const inStock = item.stock !== 0;
-      const isDisabled = !canAfford || !inStock;
+      
+      // For role items, only allow one purchase
+      const alreadyOwned = item.type === 'role' && ownedCount > 0;
+      
+      const isDisabled = !canAfford || !inStock || alreadyOwned;
+      
+      let buttonLabel = `Buy ${item.name}`;
+      if (alreadyOwned) {
+        buttonLabel = `Already Owned`;
+      }
       
       const button = new ButtonBuilder()
         .setCustomId(`shop_buy_${item._id}`)
-        .setLabel(`Buy ${item.name}`)
+        .setLabel(buttonLabel)
         .setStyle(isDisabled ? ButtonStyle.Secondary : ButtonStyle.Primary)
         .setDisabled(isDisabled);
       

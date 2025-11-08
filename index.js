@@ -287,8 +287,13 @@ client.on('interactionCreate', async (interaction) => {
         return interaction.update({ content: '❌ This item is out of stock.', embeds: [], components: [] });
       }
 
-      // Update inventory
+      // Check if already owned (for role items)
       let invItem = user.inventory.find(i => i.item === item.name);
+      if (item.type === 'role' && invItem && invItem.quantity > 0) {
+        return interaction.update({ content: '❌ You already own this item.', embeds: [], components: [] });
+      }
+
+      // Update inventory
       if (invItem) {
         invItem.quantity += 1;
       } else {
