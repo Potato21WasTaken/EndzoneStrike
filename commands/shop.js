@@ -22,25 +22,32 @@ module.exports = {
       user = await User.create({ discordId: interaction.user.id });
     }
 
-    // Build the shop description with ownership status
-    const itemDescriptions = items.map(item => {
+    // Build the shop embed with ownership status
+    const embed = new EmbedBuilder()
+      .setTitle('🛒 Shop')
+      .setDescription(`Welcome to the shop! You have **$${user.balance}** to spend.`)
+      .setColor(0x00b6ff);
+
+    // Add each item as a field for better formatting
+    items.forEach(item => {
       const invItem = user.inventory.find(i => i.item === item.name);
       const ownedCount = invItem ? invItem.quantity : 0;
       
-      let description = `**${item.name}** — $${item.price}\n`;
-      description += `${item.description || ''}\n`;
-      description += `# owned: ${ownedCount}`;
+      let fieldValue = `💰 **Price:** $${item.price}\n`;
+      if (item.description) {
+        fieldValue += `📝 ${item.description}\n`;
+      }
+      fieldValue += `📦 **Owned:** ${ownedCount}`;
       if (item.stock > 0) {
-        description += `\nStock: ${item.stock}`;
+        fieldValue += `\n📊 **Stock:** ${item.stock}`;
       }
       
-      return description;
+      embed.addFields({
+        name: `${item.name}`,
+        value: fieldValue,
+        inline: false
+      });
     });
-
-    const embed = new EmbedBuilder()
-      .setTitle('🛒 Shop')
-      .setDescription(itemDescriptions.join('\n\n'))
-      .setColor(0x00b6ff);
 
     // Create buttons for each item (max 5 per row, max 5 rows = 25 buttons)
     const buttons = [];
