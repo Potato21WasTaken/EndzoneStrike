@@ -205,6 +205,129 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
+  // === Handle Shop Purchase Buttons ===
+  if (interaction.isButton() && interaction.customId.startsWith('shop_buy_')) {
+    const ShopItem = require('./data/models/ShopItem');
+    const User = require('./data/models/User');
+    const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
+    try {
+      const itemId = interaction.customId.replace('shop_buy_', '');
+      const item = await ShopItem.findById(itemId);
+      
+      if (!item) {
+        return interaction.reply({ content: '❌ Item not found.', ephemeral: true });
+      }
+
+      let user = await User.findOne({ discordId: interaction.user.id });
+      if (!user) {
+        user = await User.create({ discordId: interaction.user.id });
+      }
+
+      // Check if user can afford
+      if (user.balance < item.price) {
+        return interaction.reply({ content: '❌ You cannot afford this item.', ephemeral: true });
+      }
+
+      // Check stock
+      if (item.stock === 0) {
+        return interaction.reply({ content: '❌ This item is out of stock.', ephemeral: true });
+      }
+
+      // Show confirmation modal/message
+      const confirmEmbed = new EmbedBuilder()
+        .setTitle('Confirm Purchase')
+        .setDescription(`Are you sure you want to buy **${item.name}** for $${item.price}?`)
+        .setColor(0xffaa00);
+
+      const confirmRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`shop_confirm_${itemId}`)
+          .setLabel('Confirm')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('shop_cancel')
+          .setLabel('Cancel')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], ephemeral: true });
+    } catch (err) {
+      console.error(err);
+      await interaction.reply({ content: 'An error occurred.', ephemeral: true }).catch(() => {});
+    }
+    return;
+  }
+
+  // === Handle Shop Confirmation Buttons ===
+  if (interaction.isButton() && interaction.customId.startsWith('shop_confirm_')) {
+    const ShopItem = require('./data/models/ShopItem');
+    const User = require('./data/models/User');
+    const { EmbedBuilder } = require('discord.js');
+
+    try {
+      const itemId = interaction.customId.replace('shop_confirm_', '');
+      const item = await ShopItem.findById(itemId);
+      
+      if (!item) {
+        return interaction.update({ content: '❌ Item not found.', embeds: [], components: [] });
+      }
+
+      let user = await User.findOne({ discordId: interaction.user.id });
+      if (!user) {
+        return interaction.update({ content: '❌ User not found.', embeds: [], components: [] });
+      }
+
+      // Double-check affordability and stock
+      if (user.balance < item.price) {
+        return interaction.update({ content: '❌ You cannot afford this item.', embeds: [], components: [] });
+      }
+
+      if (item.stock === 0) {
+        return interaction.update({ content: '❌ This item is out of stock.', embeds: [], components: [] });
+      }
+
+      // Check if already owned (for role items)
+      let invItem = user.inventory.find(i => i.item === item.name);
+      if (item.type === 'role' && invItem && invItem.quantity > 0) {
+        return interaction.update({ content: '❌ You already own this item.', embeds: [], components: [] });
+      }
+
+      // Update inventory
+      if (invItem) {
+        invItem.quantity += 1;
+      } else {
+        user.inventory.push({ item: item.name, quantity: 1 });
+      }
+      user.balance -= item.price;
+
+      // Update item stock if not unlimited
+      if (item.stock > 0) {
+        item.stock -= 1;
+      }
+
+      await user.save();
+      await item.save();
+
+      const successEmbed = new EmbedBuilder()
+        .setTitle('✅ Purchase Successful')
+        .setDescription(`You bought **${item.name}** for $${item.price}.\nYour new balance: $${user.balance}`)
+        .setColor(0x00ff99);
+
+      await interaction.update({ embeds: [successEmbed], components: [] });
+    } catch (err) {
+      console.error(err);
+      await interaction.update({ content: 'An error occurred during purchase.', embeds: [], components: [] }).catch(() => {});
+    }
+    return;
+  }
+
+  // === Handle Shop Cancel Button ===
+  if (interaction.isButton() && interaction.customId === 'shop_cancel') {
+    await interaction.update({ content: '❌ Purchase cancelled.', embeds: [], components: [] });
+    return;
+  }
+
   // === Handle Suggestion Buttons ===
   if (interaction.isButton()) {
     (async () => {
