@@ -1,0 +1,244 @@
+# Backend API for Code Generation and Redemption
+
+This is the backend API server that handles code generation for Discord users and code redemption for Roblox servers.
+
+## Features
+
+- **POST /create-code** - Generate unique codes for Discord users
+- **POST /redeem-code** - Redeem codes in Roblox
+- **GET /code-status** - Check code status (for debugging)
+- **GET /health** - Health check endpoint
+
+## Setup
+
+### 1. Install Dependencies
+
+```bash
+cd backend
+npm install
+```
+
+### 2. Environment Variables
+
+Create a `.env` file in the `backend` directory with the following variables:
+
+```env
+# Server Port (default: 3000)
+PORT=3000
+
+# Authentication secrets
+BOT_SECRET=your-bot-secret-here
+SERVER_SECRET=your-server-secret-here
+```
+
+**Important:** 
+- `BOT_SECRET` is used by the Discord bot to authenticate when creating codes
+- `SERVER_SECRET` is used by the Roblox server to authenticate when redeeming codes
+- Use strong, random strings for both secrets
+- Never commit these secrets to version control
+
+### 3. Start the Server
+
+```bash
+npm start
+```
+
+The server will start on port 3000 (or the port specified in `.env`).
+
+## API Endpoints
+
+### POST /create-code
+
+Creates a unique code for a Discord user.
+
+**Headers:**
+- `x-bot-key`: BOT_SECRET (required)
+- `Content-Type`: application/json
+
+**Body:**
+```json
+{
+  "discordId": "123456789012345678",
+  "length": 8
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "code": "ABC12XYZ"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:3000/create-code \
+  -H "x-bot-key: your-bot-secret-here" \
+  -H "Content-Type: application/json" \
+  -d '{"discordId":"123456789012345678"}'
+```
+
+### POST /redeem-code
+
+Redeems a code for a Roblox user.
+
+**Headers:**
+- `x-api-key`: SERVER_SECRET (required)
+- `Content-Type`: application/json
+
+**Body:**
+```json
+{
+  "code": "ABC12XYZ",
+  "robloxUserId": "987654321"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "reward": {
+    "discordId": "123456789012345678",
+    "robloxUserId": "987654321",
+    "code": "ABC12XYZ",
+    "redeemedAt": "2024-01-15T10:30:00.000Z",
+    "coins": 1000,
+    "items": []
+  }
+}
+```
+
+**Response (400 Bad Request - Already Used):**
+```json
+{
+  "error": "code_already_used",
+  "message": "This code has already been redeemed",
+  "redeemedBy": "987654321",
+  "redeemedAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:3000/redeem-code \
+  -H "x-api-key: your-server-secret-here" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"ABC12XYZ","robloxUserId":"987654321"}'
+```
+
+### GET /code-status
+
+Checks the status of a code (debugging endpoint, no authentication required).
+
+**Query Parameters:**
+- `code`: The code to check
+
+**Response (200 OK):**
+```json
+{
+  "code": "ABC12XYZ",
+  "redeemed": false,
+  "createdAt": "2024-01-15T10:00:00.000Z",
+  "redeemedAt": null
+}
+```
+
+**Example:**
+```bash
+curl http://localhost:3000/code-status?code=ABC12XYZ
+```
+
+## Data Persistence
+
+All codes are stored in `backend/data.json`. This file is created automatically when the first code is generated.
+
+**Format:**
+```json
+{
+  "codes": {
+    "ABC12XYZ": {
+      "discordId": "123456789012345678",
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "redeemed": false,
+      "robloxUserId": null,
+      "redeemedAt": null
+    }
+  }
+}
+```
+
+## Security Recommendations
+
+1. **Use HTTPS in production** - Never transmit secrets over HTTP
+2. **Strong secrets** - Use long, random strings for BOT_SECRET and SERVER_SECRET
+3. **Environment variables** - Never commit `.env` files to version control
+4. **Rate limiting** - Consider adding rate limiting in production
+5. **CORS configuration** - Configure CORS appropriately for your production environment
+
+## Testing
+
+### Manual Test Plan
+
+1. **Start the server:**
+   ```bash
+   npm start
+   ```
+
+2. **Test code creation:**
+   ```bash
+   curl -X POST http://localhost:3000/create-code \
+     -H "x-bot-key: test-secret" \
+     -H "Content-Type: application/json" \
+     -d '{"discordId":"123456789"}'
+   ```
+   Expected: Returns a unique code like `{"code":"ABC12XYZ"}`
+
+3. **Test code creation without auth:**
+   ```bash
+   curl -X POST http://localhost:3000/create-code \
+     -H "Content-Type: application/json" \
+     -d '{"discordId":"123456789"}'
+   ```
+   Expected: Returns 403 Forbidden
+
+4. **Check code status:**
+   ```bash
+   curl http://localhost:3000/code-status?code=ABC12XYZ
+   ```
+   Expected: Returns code status with `"redeemed": false`
+
+5. **Redeem the code:**
+   ```bash
+   curl -X POST http://localhost:3000/redeem-code \
+     -H "x-api-key: test-secret" \
+     -H "Content-Type: application/json" \
+     -d '{"code":"ABC12XYZ","robloxUserId":"987654321"}'
+   ```
+   Expected: Returns success with reward data
+
+6. **Try to redeem again:**
+   ```bash
+   curl -X POST http://localhost:3000/redeem-code \
+     -H "x-api-key: test-secret" \
+     -H "Content-Type: application/json" \
+     -d '{"code":"ABC12XYZ","robloxUserId":"987654321"}'
+   ```
+   Expected: Returns 400 with `"error": "code_already_used"`
+
+## Deployment
+
+For production deployment:
+
+1. Set up environment variables on your hosting platform
+2. Ensure the server has write permissions for `data.json`
+3. Use a process manager like PM2 to keep the server running
+4. Configure HTTPS/SSL certificates
+5. Set up monitoring and logging
+6. Consider using a proper database instead of JSON file storage for production
+
+## Troubleshooting
+
+- **"Failed to generate unique code"**: This happens if too many codes have been generated. The code space is large (36^8 combinations), so this is unlikely in normal use.
+- **"Invalid or missing x-bot-key header"**: Ensure BOT_SECRET is set correctly in `.env` and matches the header value.
+- **"Code not found"**: The code doesn't exist in the database or was entered incorrectly (codes are case-insensitive).
