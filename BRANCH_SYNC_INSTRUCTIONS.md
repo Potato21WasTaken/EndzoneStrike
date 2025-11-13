@@ -19,28 +19,29 @@ Run these commands to update each feature branch to match main:
 
 ```bash
 # Fetch the latest changes
-git fetch origin main
+git fetch origin
 
 # Update each feature branch
+# WARNING: --force-with-lease will overwrite the remote branch. Make sure you have no uncommitted work.
 git checkout copilot/add-discord-generate-code-feature
 git reset --hard origin/main
-git push --force origin copilot/add-discord-generate-code-feature
+git push --force-with-lease origin copilot/add-discord-generate-code-feature
 
 git checkout copilot/add-minigames-to-bot
 git reset --hard origin/main
-git push --force origin copilot/add-minigames-to-bot
+git push --force-with-lease origin copilot/add-minigames-to-bot
 
 git checkout copilot/fix-job-balance-issue
 git reset --hard origin/main
-git push --force origin copilot/fix-job-balance-issue
+git push --force-with-lease origin copilot/fix-job-balance-issue
 
 git checkout copilot/refactor-shop-button-purchasing
 git reset --hard origin/main
-git push --force origin copilot/refactor-shop-button-purchasing
+git push --force-with-lease origin copilot/refactor-shop-button-purchasing
 
 git checkout copilot/merge-all-different-branches
 git reset --hard origin/main
-git push --force origin copilot/merge-all-different-branches
+git push --force-with-lease origin copilot/merge-all-different-branches
 
 # Return to main
 git checkout main
@@ -102,7 +103,7 @@ All changes from the following branches are now in main:
   - `MINIGAMES.md` - Detailed minigame documentation
   - `IMPLEMENTATION_SUMMARY.md` - Full implementation details
 
-### Total Impact:
+### Total Impact (from git diff):
 - **28 files changed**
-- **5,482 lines added**
-- **67 lines deleted**
+- **~5,482 lines added** (approximately)
+- **~67 lines deleted** (approximately)
