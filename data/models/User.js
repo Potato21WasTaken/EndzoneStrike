@@ -22,7 +22,12 @@ const userSchema = new mongoose.Schema({
       item: { type: String },
       quantity: { type: Number, default: 1 }
     }
-  ]
+  ],
+  currentJob: { type: String, default: null },
+  jobStreak: {
+    count: { type: Number, default: 0 },
+    lastWorked: { type: Date, default: null }
+  }
 });
 
 module.exports = mongoose.model('User', userSchema);

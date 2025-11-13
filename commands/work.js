@@ -99,10 +99,11 @@ module.exports = {
         if (!btn || btn.customId === 'work_quit_cancel') {
           return interaction.editReply({ content: 'Job change cancelled.', components: [] });
         }
+        await btn.deferUpdate();
         user.currentJob = null;
         if (user.jobStreak) user.jobStreak.count = 0; // reset streak
         await user.save();
-        await btn.update({ content: 'You quit your job. Run `/work job:JobName` again to start a new one.', components: [] });
+        await btn.editReply({ content: 'You quit your job. Run `/work job:JobName` again to start a new one.', components: [] });
         return;
       }
 
@@ -129,10 +130,11 @@ module.exports = {
         if (!btn || btn.customId === 'work_pick_cancel') {
           return interaction.editReply({ content: 'Job selection cancelled.', components: [] });
         }
+        await btn.deferUpdate();
         user.currentJob = job.name;
         if (user.jobStreak) user.jobStreak.count = 0; // reset streak
         await user.save();
-        await btn.update({ content: `You are now working as a **${job.display}**! Run \`/work\` to start.`, components: [] });
+        await btn.editReply({ content: `You are now working as a **${job.display}**! Run \`/work\` to start.`, components: [] });
         return;
       }
     }
