@@ -77,7 +77,16 @@ app.post('/create-code', async (req, res) => {
       });
     }
 
-    const { discordId, length } = req.body;
+    // Validate request body exists
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({ 
+        error: 'Bad Request', 
+        message: 'Invalid request body' 
+      });
+    }
+
+    const discordId = req.body.discordId;
+    const length = req.body.length;
     
     // Validate input types to prevent type confusion and injection
     if (!discordId || typeof discordId !== 'string') {
@@ -188,13 +197,17 @@ app.post('/redeem-code', async (req, res) => {
       });
     }
 
-    // Mark as redeemed using safe property assignment
-    codeData.redeemed = true;
-    codeData.robloxUserId = robloxUserId;
-    codeData.redeemedAt = new Date().toISOString();
+    // Mark as redeemed by creating a new object (prevents prototype pollution)
+    const updatedCodeData = {
+      discordId: codeData.discordId,
+      createdAt: codeData.createdAt,
+      redeemed: true,
+      robloxUserId: robloxUserId,
+      redeemedAt: new Date().toISOString()
+    };
     
     // Update the code in the data structure
-    data.codes[normalizedCode] = codeData;
+    data.codes[normalizedCode] = updatedCodeData;
     await saveData(data);
 
     console.log(`✅ Code redeemed: ${normalizedCode} by Roblox user ${robloxUserId}`);
@@ -203,10 +216,10 @@ app.post('/redeem-code', async (req, res) => {
     res.status(200).json({ 
       ok: true, 
       reward: {
-        discordId: codeData.discordId,
+        discordId: updatedCodeData.discordId,
         robloxUserId,
         code: normalizedCode,
-        redeemedAt: codeData.redeemedAt,
+        redeemedAt: updatedCodeData.redeemedAt,
         // Add your reward logic here
         coins: 1000,
         items: []
