@@ -1,8 +1,61 @@
 # Minigames Guide
 
-This bot features 5 exciting minigames integrated with the economy system! Play to earn money and have fun.
+This bot features 8 exciting minigames integrated with the economy system! Play to earn money and have fun.
 
 ## Available Minigames
+
+### 🎮 Interactive Games
+
+### 💣 `/minefield` - Minefield Navigator
+Navigate through a 5x5 grid avoiding hidden mines! Each safe tile increases your winnings.
+
+- **Cooldown**: 60 seconds
+- **Bet range**: $10 - $500
+- **Grid**: 5x5 (25 tiles total)
+- **Mines**: 5 mines hidden randomly
+- **Payouts**: Each safe tile adds 30% to your bet
+  - 1 safe tile: 1.3x bet
+  - 5 safe tiles: 2.5x bet
+  - 10 safe tiles: 4.0x bet
+  - All 20 safe tiles: 7.0x bet!
+- **Strategy**: Cash out anytime to secure your winnings, or keep going for bigger multipliers!
+
+**How to play**: `/minefield bet:100` then click tiles to reveal. Use the Cash Out button when you want to secure your winnings!
+
+---
+
+### 🧠 `/memory` - Memory Match
+Match pairs of emojis in a 4x4 grid! Speed and accuracy earn bonus multipliers.
+
+- **Cooldown**: 50 seconds
+- **Bet range**: $10 - $300
+- **Grid**: 4x4 (8 pairs to find)
+- **Time limit**: 2 minutes
+- **Base payout**: 2x your bet for winning
+- **Bonuses**:
+  - Perfect game (8 moves): +1.0x multiplier
+  - Good game (≤11 moves): +0.5x multiplier
+  - Speed bonus (<60 seconds): +0.5x multiplier
+  - Maximum possible: 4.0x your bet!
+- **Lose**: If time runs out, you lose your bet
+
+**How to play**: `/memory bet:100` then click tiles to reveal and match pairs!
+
+---
+
+### 🔴 `/connect4` - Connect Four
+Classic Connect 4 against another player! First to connect 4 wins.
+
+- **Cooldown**: 30 seconds
+- **Bet range**: $10 - $500
+- **Players**: 2 (Player vs Player)
+- **Time limit**: 3 minutes total
+- **Payout**: Winner takes both bets (2x their bet)
+- **Draw**: Both players keep their bets
+
+**How to play**: `/connect4 opponent:@user bet:100` - Challenge another player! They must accept to start the game.
+
+---
 
 ### 🧠 `/trivia` - Trivia Questions
 Answer general knowledge questions to earn money!
@@ -81,11 +134,31 @@ Try your luck at the slot machine!
 
 ## Tips & Strategies
 
+### For Interactive Games
+1. **Minefield** - Start with corners and edges, they're statistically safer. Cash out early for guaranteed profit!
+2. **Memory** - Focus on remembering positions. The speed bonus is significant - under 60 seconds adds 0.5x!
+3. **Connect4** - Control the center columns for better winning chances
+
+### For Quick Games
 1. **Start small** - Test each game with minimum bets to understand the mechanics
 2. **Manage your bankroll** - Don't bet more than you can afford to lose
 3. **Use cooldowns wisely** - Different games have different cooldowns, rotate between them
 4. **Trivia is safest** - You always get something, even if you're wrong!
 5. **High risk, high reward** - Slots and guessnumber offer the biggest payouts
+
+## Game Categories
+
+**Interactive Strategy Games** (requires thinking):
+- `/minefield` - Risk vs reward decision making
+- `/memory` - Pattern recognition and memory
+- `/connect4` - Strategic player vs player
+
+**Quick Gambling Games** (fast and simple):
+- `/trivia` - Knowledge testing
+- `/guessnumber` - Pure luck with skill element
+- `/diceroll` - Quick dice gambling
+- `/rps` - Classic hand game
+- `/slots` - Slot machine luck
 
 ## Other Economy Commands
 

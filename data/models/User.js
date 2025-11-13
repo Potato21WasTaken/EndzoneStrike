@@ -19,7 +19,10 @@ const userSchema = new mongoose.Schema({
     guessnumber: { type: Date, default: new Date(0) },
     diceroll: { type: Date, default: new Date(0) },
     rps: { type: Date, default: new Date(0) },
-    slots: { type: Date, default: new Date(0) }
+    slots: { type: Date, default: new Date(0) },
+    minefield: { type: Date, default: new Date(0) },
+    memory: { type: Date, default: new Date(0) },
+    connect4: { type: Date, default: new Date(0) }
   },
   hoursWorked: { type: Map, of: Number, default: {} },
   inventory: [
