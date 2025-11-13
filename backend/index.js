@@ -26,11 +26,16 @@ app.use((req, res, next) => {
 async function loadData() {
   try {
     const data = await fs.readFile(DATA_FILE, 'utf8');
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    // Ensure codes object exists and is safe
+    if (!parsed.codes || typeof parsed.codes !== 'object') {
+      parsed.codes = Object.create(null);
+    }
+    return parsed;
   } catch (error) {
     if (error.code === 'ENOENT') {
-      // File doesn't exist, return empty data
-      return { codes: {} };
+      // File doesn't exist, return empty data with null prototype object
+      return { codes: Object.create(null) };
     }
     throw error;
   }
@@ -74,10 +79,18 @@ app.post('/create-code', async (req, res) => {
 
     const { discordId, length } = req.body;
     
-    if (!discordId) {
+    // Validate input types to prevent type confusion and injection
+    if (!discordId || typeof discordId !== 'string') {
       return res.status(400).json({ 
         error: 'Bad Request', 
-        message: 'discordId is required' 
+        message: 'discordId is required and must be a string' 
+      });
+    }
+    
+    if (length !== undefined && (typeof length !== 'number' || length < 6 || length > 16)) {
+      return res.status(400).json({ 
+        error: 'Bad Request', 
+        message: 'length must be a number between 6 and 16' 
       });
     }
 
@@ -121,16 +134,44 @@ app.post('/redeem-code', async (req, res) => {
 
     const { code, robloxUserId } = req.body;
     
-    if (!code || !robloxUserId) {
+    // Validate input types to prevent type confusion and injection
+    if (!code || typeof code !== 'string') {
       return res.status(400).json({ 
         error: 'Bad Request', 
-        message: 'code and robloxUserId are required' 
+        message: 'code is required and must be a string' 
+      });
+    }
+    
+    if (!robloxUserId || typeof robloxUserId !== 'string') {
+      return res.status(400).json({ 
+        error: 'Bad Request', 
+        message: 'robloxUserId is required and must be a string' 
+      });
+    }
+
+    // Normalize and validate code format (prevent prototype pollution)
+    const normalizedCode = code.toUpperCase().trim();
+    
+    // Reject codes that could be prototype pollution attempts
+    if (normalizedCode === '__PROTO__' || normalizedCode === 'CONSTRUCTOR' || normalizedCode === 'PROTOTYPE') {
+      return res.status(400).json({ 
+        error: 'Bad Request', 
+        message: 'Invalid code format' 
       });
     }
 
     const data = await loadData();
-    const codeData = data.codes[code.toUpperCase()];
-
+    
+    // Use Object.prototype.hasOwnProperty to safely check for key existence
+    if (!Object.prototype.hasOwnProperty.call(data.codes, normalizedCode)) {
+      return res.status(404).json({ 
+        error: 'Not Found', 
+        message: 'Code not found' 
+      });
+    }
+    
+    const codeData = data.codes[normalizedCode];
+    
     if (!codeData) {
       return res.status(404).json({ 
         error: 'Not Found', 
@@ -147,13 +188,16 @@ app.post('/redeem-code', async (req, res) => {
       });
     }
 
-    // Mark as redeemed
+    // Mark as redeemed using safe property assignment
     codeData.redeemed = true;
     codeData.robloxUserId = robloxUserId;
     codeData.redeemedAt = new Date().toISOString();
+    
+    // Update the code in the data structure
+    data.codes[normalizedCode] = codeData;
     await saveData(data);
 
-    console.log(`✅ Code redeemed: ${code} by Roblox user ${robloxUserId}`);
+    console.log(`✅ Code redeemed: ${normalizedCode} by Roblox user ${robloxUserId}`);
 
     // Return success with reward data
     res.status(200).json({ 
@@ -161,7 +205,7 @@ app.post('/redeem-code', async (req, res) => {
       reward: {
         discordId: codeData.discordId,
         robloxUserId,
-        code,
+        code: normalizedCode,
         redeemedAt: codeData.redeemedAt,
         // Add your reward logic here
         coins: 1000,
@@ -182,26 +226,40 @@ app.get('/code-status', async (req, res) => {
   try {
     const { code } = req.query;
     
-    if (!code) {
+    // Validate input type
+    if (!code || typeof code !== 'string') {
       return res.status(400).json({ 
         error: 'Bad Request', 
-        message: 'code query parameter is required' 
+        message: 'code query parameter is required and must be a string' 
+      });
+    }
+
+    // Normalize and validate code format
+    const normalizedCode = code.toUpperCase().trim();
+    
+    // Reject codes that could be prototype pollution attempts
+    if (normalizedCode === '__PROTO__' || normalizedCode === 'CONSTRUCTOR' || normalizedCode === 'PROTOTYPE') {
+      return res.status(400).json({ 
+        error: 'Bad Request', 
+        message: 'Invalid code format' 
       });
     }
 
     const data = await loadData();
-    const codeData = data.codes[code.toUpperCase()];
-
-    if (!codeData) {
+    
+    // Use Object.prototype.hasOwnProperty to safely check for key existence
+    if (!Object.prototype.hasOwnProperty.call(data.codes, normalizedCode)) {
       return res.status(404).json({ 
         error: 'Not Found', 
         message: 'Code not found' 
       });
     }
+    
+    const codeData = data.codes[normalizedCode];
 
     // Return limited information (don't expose sensitive data)
     res.status(200).json({
-      code: code.toUpperCase(),
+      code: normalizedCode,
       redeemed: codeData.redeemed,
       createdAt: codeData.createdAt,
       redeemedAt: codeData.redeemedAt || null
