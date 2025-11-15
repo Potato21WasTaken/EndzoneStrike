@@ -332,6 +332,12 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.isButton()) {
     (async () => {
       const [action, suggesterId] = interaction.customId.split('_');
+      
+      // Only handle suggestion buttons (accept, decline, edit, notes)
+      if (!['accept', 'decline', 'edit', 'notes'].includes(action)) {
+        return; // Not a suggestion button, ignore
+      }
+      
       const adminRole = interaction.guild.roles.cache.get(process.env.ADMIN_ROLE_ID);
 
       if (!adminRole) {
