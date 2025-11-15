@@ -11,6 +11,28 @@ The code generator allows Discord users to generate unique codes that can be red
 3. User enters the code in your Roblox game
 4. Game validates the code and gives rewards
 
+## 🏗️ Understanding the Architecture
+
+**Important:** This system has **3 separate parts** that work together:
+
+1. **Discord Bot** (`index.js` in the root folder)
+   - Your main Discord bot
+   - Handles Discord commands and user interactions
+
+2. **Backend API Server** (`backend/index.js` - a separate server!)
+   - A REST API server that stores and validates codes
+   - Runs separately from your Discord bot
+   - Both Discord bot and Roblox connect to this
+
+3. **Roblox Game** (your Roblox game files)
+   - Connects to the backend to redeem codes
+
+**Why separate servers?** The Discord bot and backend API are two different Node.js applications that run at the same time:
+- The Discord bot talks to Discord's servers
+- The backend API stores codes and validates them
+- Both your Discord bot AND your Roblox game need to connect to the backend API
+- This separation keeps your code organized and secure
+
 ## 📋 Prerequisites
 
 Before you start, make sure you have:
@@ -42,6 +64,23 @@ Before you start, make sure you have:
 - Open your terminal application
 - Navigate to where you downloaded/cloned this repository
 
+### ⚠️ Common Issue: Make sure you're in the RIGHT folder!
+
+If you see an error like "No such file or directory" when running `cd backend`, you're probably in the wrong folder.
+
+**Check where you are:**
+```bash
+pwd                    # Shows your current folder
+ls                     # Lists files in current folder
+```
+
+**You should see:** `backend`, `commands`, `discord`, `roblox`, `index.js`, `package.json`
+
+**If you're in a subfolder** (like `EndzoneStrikeBot`), go UP one level:
+```bash
+cd ..                  # Go up one folder
+```
+
 **Example:** If you downloaded the repository to your Desktop, you would:
 ```bash
 # Windows
@@ -57,23 +96,31 @@ cd ~/Desktop/EndzoneStrike
 
 ### Part 1: Backend Setup (5 minutes)
 
-The backend is the server that stores and validates codes.
+The backend is a **separate API server** that stores and validates codes.
 
 > **💡 Reminder:** Run these commands in your **computer's terminal/command prompt**, from the root folder of this repository.
+
+> **❓ Why does backend need its own files?** The backend is a completely separate Node.js server from your Discord bot. It runs independently and has its own dependencies, configuration, and purpose. Think of it like having two separate apps that talk to each other.
 
 1. **Navigate to the backend folder:**
    ```bash
    cd backend
    ```
+   
+   **If you get an error:** Make sure you're in the root folder of the repository (run `pwd` to check). You should see folders like `backend`, `commands`, `discord`, etc.
 
 2. **Install dependencies:**
    ```bash
    npm install
    ```
+   
+   This installs packages the backend needs (Express, etc.) - separate from your Discord bot's packages.
 
 3. **Create a `.env` file in the `backend` folder:**
    
    You can create this file using any text editor (Notepad, VS Code, etc.). Save it as `.env` inside the `backend` folder.
+   
+   > **❓ Why a separate .env file?** The backend has different configuration needs than your Discord bot. The backend needs PORT and SERVER_SECRET (for Roblox authentication), while your Discord bot needs BOT_TOKEN and MONGO_URI. Keeping them separate makes it clearer what each server needs.
    
    ```env
    PORT=3000
@@ -464,6 +511,9 @@ local BACKEND_URL = "https://your-app.onrender.com"
 **Problem:** "Invalid code"
 - **Solution:** Code might be typo'd or already used (codes are one-time use)
 
+**Problem:** "No such file or directory" when running `cd backend`
+- **Solution:** You're in the wrong folder! Run `pwd` to see where you are. You should be in the root EndzoneStrike folder, not in a subfolder like `EndzoneStrikeBot`. Use `cd ..` to go up one level if needed.
+
 ### Backend Issues
 
 **Problem:** Backend won't start
@@ -471,6 +521,32 @@ local BACKEND_URL = "https://your-app.onrender.com"
 
 **Problem:** Codes not saving
 - **Solution:** Check that the backend has write permissions for `data.json`
+
+## ❓ Frequently Asked Questions
+
+### Q: Why do I need a separate backend folder with its own index.js?
+
+**A:** The backend is a **completely separate server** from your Discord bot:
+- **Discord Bot** (`index.js` in root) - Handles Discord commands and users
+- **Backend API** (`backend/index.js`) - Stores and validates codes
+
+They're two different Node.js applications that run at the same time. The backend is an API that both your Discord bot AND your Roblox game connect to. This keeps your code organized and secure.
+
+### Q: Can't I just use my existing .env file?
+
+**A:** No, because they're separate applications with different needs:
+- **Root .env** - Discord bot needs: `BOT_TOKEN`, `MONGO_URI`, `CLIENT_ID`, etc.
+- **Backend .env** - API server needs: `PORT`, `BOT_SECRET`, `SERVER_SECRET`
+
+The backend doesn't need your Discord bot token, and your bot doesn't need the backend's port configuration. Keeping them separate makes configuration clearer.
+
+### Q: Do I run both servers at the same time?
+
+**A:** Yes! You need to run:
+1. The backend API server (in one terminal: `cd backend && npm start`)
+2. Your Discord bot (in another terminal: `node index.js`)
+
+Both need to be running for the code generator to work.
 
 ## 📚 More Information
 
