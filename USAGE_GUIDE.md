@@ -20,11 +20,41 @@ Before you start, make sure you have:
 - [ ] Node.js 18+ installed on your computer
 - [ ] Basic knowledge of Discord bots and Roblox scripting
 
+## 💻 Where to Run Commands
+
+**All bash/terminal commands in this guide should be run on your computer**, not in Roblox or Discord:
+
+### Windows Users
+- Open **Command Prompt** (search for "cmd" in Start menu) or **PowerShell**
+- Or use **Windows Terminal** if you have it installed
+- Navigate to where you downloaded/cloned this repository
+
+### Mac Users
+- Open **Terminal** (found in Applications → Utilities)
+- Navigate to where you downloaded/cloned this repository
+
+### Linux Users
+- Open your terminal application
+- Navigate to where you downloaded/cloned this repository
+
+**Example:** If you downloaded the repository to your Desktop, you would:
+```bash
+# Windows
+cd C:\Users\YourName\Desktop\EndzoneStrike
+
+# Mac/Linux
+cd ~/Desktop/EndzoneStrike
+```
+
+**Note:** Commands that start with `cd`, `npm`, `node`, `curl`, or `ngrok` are run in your computer's terminal/command prompt, NOT in Discord or Roblox.
+
 ## 🚀 Quick Start Guide
 
 ### Part 1: Backend Setup (5 minutes)
 
 The backend is the server that stores and validates codes.
+
+> **💡 Reminder:** Run these commands in your **computer's terminal/command prompt**, from the root folder of this repository.
 
 1. **Navigate to the backend folder:**
    ```bash
@@ -37,6 +67,9 @@ The backend is the server that stores and validates codes.
    ```
 
 3. **Create a `.env` file in the `backend` folder:**
+   
+   You can create this file using any text editor (Notepad, VS Code, etc.). Save it as `.env` inside the `backend` folder.
+   
    ```env
    PORT=3000
    BOT_SECRET=your-random-bot-secret-123
