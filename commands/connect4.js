@@ -198,48 +198,50 @@ module.exports = {
         return;
       }
 
-      // Game accepted
-      const board = createBoard();
-      const gameData = {
-        board,
-        players: [challenger.id, opponent.id],
-        currentPlayer: 0, // 0 or 1
-        bet,
-        startTime: Date.now()
-      };
+      // Game accepted - wrap in try-catch to ensure cleanup
+      try {
+        const board = createBoard();
+        const gameData = {
+          board,
+          players: [challenger.id, opponent.id],
+          currentPlayer: 0, // 0 or 1
+          bet,
+          startTime: Date.now()
+        };
 
-      activeGames.set(channelId, gameData);
+        const { rows, boardStr } = createButtons(board, 0);
 
-      const { rows, boardStr } = createButtons(board, 0);
+        const gameEmbed = new EmbedBuilder()
+          .setTitle('🔴 Connect 4 🟡')
+          .setDescription(
+            `${challenger.username} (🔴) vs ${opponent.username} (🟡)\n\n` +
+            boardStr + '\n\n' +
+            `**Current Turn:** ${challenger.username} 🔴\n` +
+            `**Bet:** $${bet} (Winner takes $${bet * 2})`
+          )
+          .setColor(0x5865F2);
 
-      const gameEmbed = new EmbedBuilder()
-        .setTitle('🔴 Connect 4 🟡')
-        .setDescription(
-          `${challenger.username} (🔴) vs ${opponent.username} (🟡)\n\n` +
-          boardStr + '\n\n' +
-          `**Current Turn:** ${challenger.username} 🔴\n` +
-          `**Bet:** $${bet} (Winner takes $${bet * 2})`
-        )
-        .setColor(0x5865F2);
+        await response.update({
+          content: 'Game started!',
+          embeds: [gameEmbed],
+          components: rows
+        });
 
-      await response.update({
-        content: 'Game started!',
-        embeds: [gameEmbed],
-        components: rows
-      });
+        // Only set activeGames after successful update
+        activeGames.set(channelId, gameData);
 
-      // Set up game collector
-      const gameFilter = i => {
-        const game = activeGames.get(channelId);
-        if (!game) return false;
-        const currentPlayerId = game.players[game.currentPlayer];
-        return i.user.id === currentPlayerId && i.customId.startsWith('c4_');
-      };
+        // Set up game collector
+        const gameFilter = i => {
+          const game = activeGames.get(channelId);
+          if (!game) return false;
+          const currentPlayerId = game.players[game.currentPlayer];
+          return i.user.id === currentPlayerId && i.customId.startsWith('c4_');
+        };
 
-      const collector = interaction.channel.createMessageComponentCollector({
-        filter: gameFilter,
-        time: TIMEOUT
-      });
+        const collector = interaction.channel.createMessageComponentCollector({
+          filter: gameFilter,
+          time: TIMEOUT
+        });
 
       collector.on('collect', async i => {
         const game = activeGames.get(channelId);
@@ -340,6 +342,24 @@ module.exports = {
           activeGames.delete(channelId);
         }
       });
+
+      } catch (gameError) {
+        // Clean up if game setup fails
+        activeGames.delete(channelId);
+        console.error('Connect 4 game error:', gameError);
+        await response.update({
+          content: '❌ An error occurred while starting the game. Please try again.',
+          embeds: [],
+          components: []
+        }).catch(() => {
+          // If update fails, try editReply
+          interaction.editReply({
+            content: '❌ An error occurred while starting the game. Please try again.',
+            embeds: [],
+            components: []
+          }).catch(console.error);
+        });
+      }
 
     } catch (error) {
       await interaction.editReply({
