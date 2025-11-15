@@ -54,7 +54,10 @@ For detailed minigame information, check [MINIGAMES.md](MINIGAMES.md)
 
 This repository includes a complete system for generating unique codes in Discord that can be redeemed in Roblox for rewards.
 
-### 📖 **[→ READ THE COMPLETE USAGE GUIDE HERE ←](USAGE_GUIDE.md)**
+### 📖 **Getting Started**
+
+- **[→ COMPLETE USAGE GUIDE](USAGE_GUIDE.md)** - Step-by-step tutorial with code examples
+- **[→ SETUP CHECKLIST](SETUP_CHECKLIST.md)** - Track your progress through setup
 
 **New to the code generator?** The [USAGE_GUIDE.md](USAGE_GUIDE.md) provides a step-by-step walkthrough from setup to testing, including:
 - How to set up the backend server
