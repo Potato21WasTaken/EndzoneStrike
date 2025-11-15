@@ -311,7 +311,8 @@ module.exports = {
 
           activeGames.delete(channelId);
           collector.stop();
-          await i.update({ embeds: [resultEmbed], components: rows });
+          await i.deferUpdate();
+          await interaction.editReply({ embeds: [resultEmbed], components: rows });
           return;
         }
 
@@ -330,7 +331,8 @@ module.exports = {
           )
           .setColor(0x5865F2);
 
-        await i.update({ embeds: [turnEmbed], components: rows });
+        await i.deferUpdate();
+        await interaction.editReply({ embeds: [turnEmbed], components: rows });
       });
 
       collector.on('end', () => {

@@ -168,7 +168,8 @@ module.exports = {
     collector.on('collect', async i => {
       const game = activeGames.get(userId);
       if (!game) {
-        await i.update({ content: '❌ Game expired!', embeds: [], components: [] });
+        await i.deferUpdate();
+        await interaction.editReply({ content: '❌ Game expired!', embeds: [], components: [] });
         collector.stop();
         return;
       }
@@ -196,7 +197,8 @@ module.exports = {
           .setColor(0x57F287)
           .addFields({ name: 'New Balance', value: `$${user.balance}`, inline: true });
 
-        await i.update({ embeds: [finalEmbed], components: [] });
+        await i.deferUpdate();
+        await interaction.editReply({ embeds: [finalEmbed], components: [] });
         return;
       }
 
@@ -240,7 +242,8 @@ module.exports = {
           .addFields({ name: 'New Balance', value: `$${user.balance}`, inline: true });
 
         const finalButtons = createButtons(game.revealed, true);
-        await i.update({ embeds: [loseEmbed], components: finalButtons });
+        await i.deferUpdate();
+        await interaction.editReply({ embeds: [loseEmbed], components: finalButtons });
         return;
       }
 
@@ -275,7 +278,8 @@ module.exports = {
           .setDisabled(false)
       );
 
-      await i.update({ embeds: [updatedEmbed], components: [...updatedButtons, updatedCashOut] });
+      await i.deferUpdate();
+      await interaction.editReply({ embeds: [updatedEmbed], components: [...updatedButtons, updatedCashOut] });
 
       // Check if all safe tiles found
       if (game.safeTiles === game.totalSafe) {
@@ -296,7 +300,8 @@ module.exports = {
           .setColor(0xFFD700)
           .addFields({ name: 'New Balance', value: `$${user.balance}`, inline: true });
 
-        await interaction.followUp({ embeds: [winEmbed] });
+        // Update the message one final time with the win embed
+        await interaction.editReply({ embeds: [winEmbed], components: [] });
       }
     });
 
