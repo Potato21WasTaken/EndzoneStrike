@@ -56,11 +56,11 @@ function dropPiece(board, col, player) {
 function createButtons(board, currentPlayer, gameOver = false) {
   const rows = [];
   
-  // Add column select buttons
-  const selectRow = new ActionRowBuilder();
-  for (let c = 0; c < COLS; c++) {
+  // Add column select buttons - split into 2 rows (4 + 3) since Discord max is 5 per row
+  const selectRow1 = new ActionRowBuilder();
+  for (let c = 0; c < 4; c++) {
     const isFull = board[0][c] !== 0;
-    selectRow.addComponents(
+    selectRow1.addComponents(
       new ButtonBuilder()
         .setCustomId(`c4_${c}`)
         .setLabel(`${c + 1}`)
@@ -68,7 +68,20 @@ function createButtons(board, currentPlayer, gameOver = false) {
         .setDisabled(isFull || gameOver)
     );
   }
-  rows.push(selectRow);
+  rows.push(selectRow1);
+
+  const selectRow2 = new ActionRowBuilder();
+  for (let c = 4; c < COLS; c++) {
+    const isFull = board[0][c] !== 0;
+    selectRow2.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`c4_${c}`)
+        .setLabel(`${c + 1}`)
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(isFull || gameOver)
+    );
+  }
+  rows.push(selectRow2);
 
   // Add board display
   let boardStr = '';
@@ -181,6 +194,30 @@ module.exports = {
       components: [acceptRow]
     });
 
+    // Handle invalid button clicks (challenger or others trying to accept/decline)
+    const invalidFilter = i => 
+      (i.customId === 'c4_accept' || i.customId === 'c4_decline') && 
+      i.user.id !== opponent.id;
+    
+    const invalidCollector = interaction.channel.createMessageComponentCollector({
+      filter: invalidFilter,
+      time: 60000
+    });
+
+    invalidCollector.on('collect', async i => {
+      if (i.user.id === challenger.id) {
+        await i.reply({
+          content: '❌ You cannot accept your own challenge!',
+          ephemeral: true
+        });
+      } else {
+        await i.reply({
+          content: '❌ Only the challenged player can accept or decline this challenge!',
+          ephemeral: true
+        });
+      }
+    });
+
     // Wait for response
     const filter = i => i.user.id === opponent.id && (i.customId === 'c4_accept' || i.customId === 'c4_decline');
     
@@ -189,6 +226,9 @@ module.exports = {
         filter,
         time: 60000
       });
+
+      // Stop the invalid collector once we get a valid response
+      invalidCollector.stop();
 
       if (response.customId === 'c4_decline') {
         await response.update({
@@ -362,6 +402,7 @@ module.exports = {
       }
 
     } catch (error) {
+      invalidCollector.stop();
       await interaction.editReply({
         content: 'Challenge expired - no response received.',
         components: []
