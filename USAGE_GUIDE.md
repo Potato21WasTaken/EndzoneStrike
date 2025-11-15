@@ -24,6 +24,11 @@ Before you start, make sure you have:
 
 **All bash/terminal commands in this guide should be run on your computer**, not in Roblox or Discord:
 
+### Using Visual Studio Code (Recommended! ⭐)
+- **If you're already using VS Code:** Just open the integrated terminal (View → Terminal or `` Ctrl+` ``)
+- VS Code will automatically open the terminal in your project folder
+- This is the easiest option if you're editing code in VS Code!
+
 ### Windows Users
 - Open **Command Prompt** (search for "cmd" in Start menu) or **PowerShell**
 - Or use **Windows Terminal** if you have it installed
