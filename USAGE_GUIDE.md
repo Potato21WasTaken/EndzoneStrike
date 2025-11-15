@@ -100,13 +100,54 @@ Now let's connect the Discord bot to the backend.
    ```
 
 4. **Deploy the slash command** - Edit `deploy-commands.js`:
+   
+   Add this at the top with other requires:
    ```javascript
    const { generateCommand } = require('./discord/generate-code');
+   ```
    
-   const commands = [
-     // ... your existing commands ...
-     generateCommand.data.toJSON(),
-   ];
+   Then add the command to the array (before the `rest.put` call):
+   ```javascript
+   // Add this line after the for loop
+   commands.push(generateCommand.data.toJSON());
+   ```
+   
+   Your deploy-commands.js should look like this:
+   ```javascript
+   const { REST } = require('@discordjs/rest');
+   const { Routes } = require('discord-api-types/v10');
+   const fs = require('fs');
+   const path = require('path');
+   const { generateCommand } = require('./discord/generate-code'); // ADD THIS
+   require('dotenv').config();
+   
+   const commands = [];
+   const commandsPath = path.join(__dirname, 'commands');
+   
+   for (const file of fs.readdirSync(commandsPath)) {
+     if (file.endsWith('.js')) {
+       const command = require(`./commands/${file}`);
+       commands.push(command.data.toJSON());
+     }
+   }
+   
+   // ADD THIS LINE
+   commands.push(generateCommand.data.toJSON());
+   
+   const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
+   
+   (async () => {
+     try {
+       console.log(`Registering ${commands.length} slash commands...`);
+       await rest.put(
+         Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+         { body: commands }
+       );
+       console.log('✅ Commands registered.');
+     } catch (err) {
+       console.error(err);
+     }
+   })();
    ```
 
 5. **Run the deployment:**
@@ -145,7 +186,9 @@ Now let's set up the Roblox side.
    local RedemptionService = require(game.ServerScriptService.RedemptionService)
    
    -- Initialize with your backend URL
-   local BACKEND_URL = "http://localhost:3000"  -- For testing
+   -- NOTE: Roblox Studio cannot connect to localhost!
+   -- For testing, use ngrok or deploy to a free host (see troubleshooting below)
+   local BACKEND_URL = "https://your-ngrok-url.ngrok-free.app"  -- Replace with your URL
    local SERVER_SECRET = "your-random-server-secret-456"  -- From backend/.env
    
    RedemptionService.Initialize(BACKEND_URL, SERVER_SECRET)
@@ -211,6 +254,31 @@ Now let's set up the Roblox side.
    ```
 
 ### Part 5: Testing the Full System (5 minutes)
+
+**Important:** Roblox Studio cannot connect to `localhost`! You need to expose your backend to the internet for testing. 
+
+**Quick Option: Use ngrok (Free)**
+
+1. **Install ngrok:**
+   - Download from [ngrok.com](https://ngrok.com/download)
+   - Extract and add to your PATH
+
+2. **Start ngrok in a new terminal:**
+   ```bash
+   ngrok http 3000
+   ```
+   
+   You'll see output like:
+   ```
+   Forwarding  https://abc123.ngrok-free.app -> http://localhost:3000
+   ```
+
+3. **Update your Roblox script** with the ngrok URL:
+   ```lua
+   local BACKEND_URL = "https://abc123.ngrok-free.app"
+   ```
+
+**Now test the system:**
 
 1. **Make sure the backend is running:**
    ```bash
