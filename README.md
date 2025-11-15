@@ -2,6 +2,21 @@
 
 A Discord bot with economy system, fun minigames, and Discord-Roblox code generation!
 
+## 📋 Table of Contents
+
+- [Features](#features)
+  - [Minigames](#-minigames)
+  - [Economy System](#-economy-system)
+  - [Other Features](#-other-features)
+- [Discord Code Generation & Roblox Redemption](#-discord-code-generation--roblox-redemption)
+  - **[→ Complete Usage Guide](USAGE_GUIDE.md)** ⭐
+- [Documentation](#documentation)
+- [Environment Variables](#environment-variables)
+- [How It Works](#how-it-works)
+- [Security Notes](#security-notes)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+
 ## Features
 
 ### 🎮 Minigames
@@ -35,9 +50,18 @@ Play exciting minigames to earn money! See [MINIGAMES.md](MINIGAMES.md) for deta
 
 For detailed minigame information, check [MINIGAMES.md](MINIGAMES.md)
 
-## Discord Code Generation & Roblox Redemption
+## 🎫 Discord Code Generation & Roblox Redemption
 
 This repository includes a complete system for generating unique codes in Discord that can be redeemed in Roblox for rewards.
+
+### 📖 **[→ READ THE COMPLETE USAGE GUIDE HERE ←](USAGE_GUIDE.md)**
+
+**New to the code generator?** The [USAGE_GUIDE.md](USAGE_GUIDE.md) provides a step-by-step walkthrough from setup to testing, including:
+- How to set up the backend server
+- How to integrate with your Discord bot
+- How to add code redemption to your Roblox game
+- How to customize rewards
+- Troubleshooting common issues
 
 ### Features
 
