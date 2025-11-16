@@ -56,11 +56,11 @@ function dropPiece(board, col, player) {
 function createButtons(board, currentPlayer, gameOver = false) {
   const rows = [];
   
-  // Add column select buttons
-  const selectRow = new ActionRowBuilder();
-  for (let c = 0; c < COLS; c++) {
+  // Add column select buttons - split into 2 rows (4 + 3) since Discord max is 5 per row
+  const selectRow1 = new ActionRowBuilder();
+  for (let c = 0; c < 4; c++) {
     const isFull = board[0][c] !== 0;
-    selectRow.addComponents(
+    selectRow1.addComponents(
       new ButtonBuilder()
         .setCustomId(`c4_${c}`)
         .setLabel(`${c + 1}`)
@@ -68,7 +68,20 @@ function createButtons(board, currentPlayer, gameOver = false) {
         .setDisabled(isFull || gameOver)
     );
   }
-  rows.push(selectRow);
+  rows.push(selectRow1);
+
+  const selectRow2 = new ActionRowBuilder();
+  for (let c = 4; c < COLS; c++) {
+    const isFull = board[0][c] !== 0;
+    selectRow2.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`c4_${c}`)
+        .setLabel(`${c + 1}`)
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(isFull || gameOver)
+    );
+  }
+  rows.push(selectRow2);
 
   // Add board display
   let boardStr = '';
@@ -181,6 +194,30 @@ module.exports = {
       components: [acceptRow]
     });
 
+    // Handle invalid button clicks (challenger or others trying to accept/decline)
+    const invalidFilter = i => 
+      (i.customId === 'c4_accept' || i.customId === 'c4_decline') && 
+      i.user.id !== opponent.id;
+    
+    const invalidCollector = interaction.channel.createMessageComponentCollector({
+      filter: invalidFilter,
+      time: 60000
+    });
+
+    invalidCollector.on('collect', async i => {
+      if (i.user.id === challenger.id) {
+        await i.reply({
+          content: '❌ You cannot accept your own challenge!',
+          ephemeral: true
+        });
+      } else {
+        await i.reply({
+          content: '❌ Only the challenged player can accept or decline this challenge!',
+          ephemeral: true
+        });
+      }
+    });
+
     // Wait for response
     const filter = i => i.user.id === opponent.id && (i.customId === 'c4_accept' || i.customId === 'c4_decline');
     
@@ -190,6 +227,9 @@ module.exports = {
         time: 60000
       });
 
+      // Stop the invalid collector once we get a valid response
+      invalidCollector.stop();
+
       if (response.customId === 'c4_decline') {
         await response.update({
           content: `${opponent.username} declined the challenge!`,
@@ -198,48 +238,50 @@ module.exports = {
         return;
       }
 
-      // Game accepted
-      const board = createBoard();
-      const gameData = {
-        board,
-        players: [challenger.id, opponent.id],
-        currentPlayer: 0, // 0 or 1
-        bet,
-        startTime: Date.now()
-      };
+      // Game accepted - wrap in try-catch to ensure cleanup
+      try {
+        const board = createBoard();
+        const gameData = {
+          board,
+          players: [challenger.id, opponent.id],
+          currentPlayer: 0, // 0 or 1
+          bet,
+          startTime: Date.now()
+        };
 
-      activeGames.set(channelId, gameData);
+        const { rows, boardStr } = createButtons(board, 0);
 
-      const { rows, boardStr } = createButtons(board, 0);
+        const gameEmbed = new EmbedBuilder()
+          .setTitle('🔴 Connect 4 🟡')
+          .setDescription(
+            `${challenger.username} (🔴) vs ${opponent.username} (🟡)\n\n` +
+            boardStr + '\n\n' +
+            `**Current Turn:** ${challenger.username} 🔴\n` +
+            `**Bet:** $${bet} (Winner takes $${bet * 2})`
+          )
+          .setColor(0x5865F2);
 
-      const gameEmbed = new EmbedBuilder()
-        .setTitle('🔴 Connect 4 🟡')
-        .setDescription(
-          `${challenger.username} (🔴) vs ${opponent.username} (🟡)\n\n` +
-          boardStr + '\n\n' +
-          `**Current Turn:** ${challenger.username} 🔴\n` +
-          `**Bet:** $${bet} (Winner takes $${bet * 2})`
-        )
-        .setColor(0x5865F2);
+        await response.update({
+          content: 'Game started!',
+          embeds: [gameEmbed],
+          components: rows
+        });
 
-      await response.update({
-        content: 'Game started!',
-        embeds: [gameEmbed],
-        components: rows
-      });
+        // Only set activeGames after successful update
+        activeGames.set(channelId, gameData);
 
-      // Set up game collector
-      const gameFilter = i => {
-        const game = activeGames.get(channelId);
-        if (!game) return false;
-        const currentPlayerId = game.players[game.currentPlayer];
-        return i.user.id === currentPlayerId && i.customId.startsWith('c4_');
-      };
+        // Set up game collector
+        const gameFilter = i => {
+          const game = activeGames.get(channelId);
+          if (!game) return false;
+          const currentPlayerId = game.players[game.currentPlayer];
+          return i.user.id === currentPlayerId && i.customId.startsWith('c4_');
+        };
 
-      const collector = interaction.channel.createMessageComponentCollector({
-        filter: gameFilter,
-        time: TIMEOUT
-      });
+        const collector = interaction.channel.createMessageComponentCollector({
+          filter: gameFilter,
+          time: TIMEOUT
+        });
 
       collector.on('collect', async i => {
         const game = activeGames.get(channelId);
@@ -311,7 +353,8 @@ module.exports = {
 
           activeGames.delete(channelId);
           collector.stop();
-          await i.update({ embeds: [resultEmbed], components: rows });
+          await i.deferUpdate();
+          await interaction.editReply({ embeds: [resultEmbed], components: rows });
           return;
         }
 
@@ -330,7 +373,8 @@ module.exports = {
           )
           .setColor(0x5865F2);
 
-        await i.update({ embeds: [turnEmbed], components: rows });
+        await i.deferUpdate();
+        await interaction.editReply({ embeds: [turnEmbed], components: rows });
       });
 
       collector.on('end', () => {
@@ -339,7 +383,26 @@ module.exports = {
         }
       });
 
+      } catch (gameError) {
+        // Clean up if game setup fails
+        activeGames.delete(channelId);
+        console.error('Connect 4 game error:', gameError);
+        await response.update({
+          content: '❌ An error occurred while starting the game. Please try again.',
+          embeds: [],
+          components: []
+        }).catch(() => {
+          // If update fails, try editReply
+          interaction.editReply({
+            content: '❌ An error occurred while starting the game. Please try again.',
+            embeds: [],
+            components: []
+          }).catch(console.error);
+        });
+      }
+
     } catch (error) {
+      invalidCollector.stop();
       await interaction.editReply({
         content: 'Challenge expired - no response received.',
         components: []

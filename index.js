@@ -13,6 +13,8 @@ const {
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config(); // Loads BOT_TOKEN, etc.
+const { registerGenerateHandlers, sendGenerateMessage } = require('./discord/generate-code');
+
 
 // === MongoDB Setup ===
 const mongoose = require('mongoose');
@@ -22,10 +24,12 @@ if (!process.env.MONGO_URI) {
   process.exit(1);
 }
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
+// Use the simple connect call to avoid deprecated option warnings with modern drivers
+mongoose.connect(process.env.MONGO_URI)
+  .catch(err => {
+    console.error('❌ MongoDB initial connection error:', err);
+    // Let the app continue starting; connection errors will also be emitted on mongoose.connection
+  });
 
 mongoose.connection.on('connected', () => {
   console.log('✅ MongoDB connected!');
@@ -47,20 +51,57 @@ const client = new Client({
 client.commands = new Collection();
 client.staffList = [];
 
+// === Initialize Error Reporter (safe) ===
+// Ensure utils/error-reporter.js exists. This init is guarded so it won't crash startup.
+// We DO NOT call reporter.report() here because the client may not be ready yet.
+// Startup test is performed once the client emits 'ready'.
+let reporter;
+try {
+  const initErrorReporter = require('./utils/error-reporter');
+  if (process.env.ERROR_LOG_CHANNEL_ID) {
+    reporter = initErrorReporter({
+      client,
+      channelId: process.env.ERROR_LOG_CHANNEL_ID,
+      botName: process.env.ERROR_REPORTER_NAME || 'EndzoneStrike Errors',
+      rateLimitMs: 5000
+    });
+  } else {
+    console.warn('⚠️ ERROR_LOG_CHANNEL_ID not set — error reporter not initialized.');
+  }
+} catch (err) {
+  // If require fails (file missing) or init throws, don't crash the bot startup
+  console.error('⚠️ Failed to initialize error reporter:', err);
+}
+
 // === Load Slash Commands ===
 const commandsPath = path.join(__dirname, 'commands');
-for (const file of fs.readdirSync(commandsPath)) {
-  if (file.endsWith('.js')) {
-    const command = require(`./commands/${file}`);
-    client.commands.set(
-      command.data.name || command.data.toJSON().name,
-      command
-    );
+if (fs.existsSync(commandsPath)) {
+  for (const file of fs.readdirSync(commandsPath)) {
+    if (file.endsWith('.js')) {
+      const command = require(`./commands/${file}`);
+      client.commands.set(
+        command.data.name || command.data.toJSON().name,
+        command
+      );
+    }
   }
+} else {
+  console.warn('⚠️ commands directory not found at', commandsPath);
 }
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
+
+  registerGenerateHandlers(client);
+const claimChannelId = process.env.CLAIM_CHANNEL_ID;
+if (claimChannelId) {
+  sendGenerateMessage(client, claimChannelId).catch(console.error);
+}
+
+  // optional: only run the startup test once the client is ready so the reporter can fetch the channel
+  if (typeof reporter?.report === 'function') {
+    reporter.report('Startup test', 'Error reporter initialized').catch(() => {});
+  }
 
   // ✅ Set Bot Status
   client.user.setPresence({
@@ -161,18 +202,18 @@ client.on('messageCreate', async (message) => {
 
       if (count === 1) {
         await message.channel.send({
-          content: `${message.author}, please refrain from pinging users with the **Don’t Ping** role. If you continue, you will be moderated by staff.`,
+          content: `${message.author}, please refrain from pinging users with the **Don't Ping** role. If you continue, you will be moderated by staff.`,
           allowedMentions: { users: [] }
         });
       } else if (count === 2) {
         await message.channel.send({
-          content: `${message.author}, this is your second warning. You will be timed out the next time you ping a user with the **Don’t Ping** role.`,
+          content: `${message.author}, this is your second warning. You will be timed out the next time you ping a user with the **Don't Ping** role.`,
           allowedMentions: { users: [] }
         });
       } else if (count >= 3) {
         await message.member.timeout(600_000, 'Repeated pings to protected members').catch(console.error);
         await message.channel.send({
-          content: `${message.author}, you have been timed out for repeatedly pinging users with the **Don’t Ping** role.`,
+          content: `${message.author}, you have been timed out for repeatedly pinging users with the **Don't Ping** role.`,
           allowedMentions: { users: [] }
         });
 
@@ -237,7 +278,7 @@ client.on('interactionCreate', async (interaction) => {
       // Show confirmation modal/message
       const confirmEmbed = new EmbedBuilder()
         .setTitle('Confirm Purchase')
-        .setDescription(`Are you sure you want to buy **${item.name}** for $${item.price}?`)
+        .setDescription(`Are you sure you want to buy **${item.name}** for ${item.price}?`)
         .setColor(0xffaa00);
 
       const confirmRow = new ActionRowBuilder().addComponents(
@@ -311,7 +352,7 @@ client.on('interactionCreate', async (interaction) => {
 
       const successEmbed = new EmbedBuilder()
         .setTitle('✅ Purchase Successful')
-        .setDescription(`You bought **${item.name}** for $${item.price}.\nYour new balance: $${user.balance}`)
+        .setDescription(`You bought **${item.name}** for ${item.price}.\nYour new balance: ${user.balance}`)
         .setColor(0x00ff99);
 
       await interaction.update({ embeds: [successEmbed], components: [] });
@@ -332,6 +373,12 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.isButton()) {
     (async () => {
       const [action, suggesterId] = interaction.customId.split('_');
+      
+      // Only handle suggestion buttons (accept, decline, edit, notes)
+      if (!['accept', 'decline', 'edit', 'notes'].includes(action)) {
+        return; // Not a suggestion button, ignore
+      }
+      
       const adminRole = interaction.guild.roles.cache.get(process.env.ADMIN_ROLE_ID);
 
       if (!adminRole) {

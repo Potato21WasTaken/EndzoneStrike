@@ -3,6 +3,7 @@ const { Routes } = require('discord-api-types/v10');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+const { generateCommand } = require('./discord/generate-code');
 
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
@@ -13,7 +14,7 @@ for (const file of fs.readdirSync(commandsPath)) {
     commands.push(command.data.toJSON());
   }
 }
-
+commands.push(generateCommand.data.toJSON());
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
 
 (async () => {
@@ -27,4 +28,6 @@ const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
   } catch (err) {
     console.error(err);
   }
+  console.log('Commands:', commands.map(c => c.name));
+
 })();

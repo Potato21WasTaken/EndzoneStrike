@@ -4,26 +4,27 @@ const User = require('../data/models/User');
 const COOLDOWN_MS = 60 * 1000; // 60 seconds cooldown
 const MAX_BET = 500;
 const MIN_BET = 10;
-const GRID_SIZE = 5; // 5x5 grid
-const MINE_COUNT = 5; // Number of mines
+const GRID_SIZE = 4; // 4x5 grid (4 rows, 5 columns)
+const GRID_COLS = 5;
+const MINE_COUNT = 4; // Number of mines (reduced from 5 to match smaller grid)
 const SAFE_MULTIPLIER = 0.3; // Each safe tile adds 30% to your bet
 
 // Active games per user
 const activeGames = new Map();
 
 function createMinefield() {
-  const grid = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(false));
+  const grid = Array(GRID_SIZE).fill(null).map(() => Array(GRID_COLS).fill(false));
   const mines = new Set();
   
   // Place mines randomly
   while (mines.size < MINE_COUNT) {
-    const pos = Math.floor(Math.random() * (GRID_SIZE * GRID_SIZE));
+    const pos = Math.floor(Math.random() * (GRID_SIZE * GRID_COLS));
     mines.add(pos);
   }
   
   mines.forEach(pos => {
-    const row = Math.floor(pos / GRID_SIZE);
-    const col = pos % GRID_SIZE;
+    const row = Math.floor(pos / GRID_COLS);
+    const col = pos % GRID_COLS;
     grid[row][col] = true; // true = mine
   });
   
@@ -34,7 +35,7 @@ function createButtons(revealed, gameOver = false) {
   const rows = [];
   for (let i = 0; i < GRID_SIZE; i++) {
     const row = new ActionRowBuilder();
-    for (let j = 0; j < GRID_SIZE; j++) {
+    for (let j = 0; j < GRID_COLS; j++) {
       const id = `mine_${i}_${j}`;
       const cell = revealed[i][j];
       
@@ -115,13 +116,13 @@ module.exports = {
 
     // Create game
     const minefield = createMinefield();
-    const revealed = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
+    const revealed = Array(GRID_SIZE).fill(null).map(() => Array(GRID_COLS).fill(null));
     const gameData = {
       minefield,
       revealed,
       bet,
       safeTiles: 0,
-      totalSafe: GRID_SIZE * GRID_SIZE - MINE_COUNT
+      totalSafe: GRID_SIZE * GRID_COLS - MINE_COUNT
     };
     
     activeGames.set(userId, gameData);
@@ -168,7 +169,8 @@ module.exports = {
     collector.on('collect', async i => {
       const game = activeGames.get(userId);
       if (!game) {
-        await i.update({ content: '❌ Game expired!', embeds: [], components: [] });
+        await i.deferUpdate();
+        await interaction.editReply({ content: '❌ Game expired!', embeds: [], components: [] });
         collector.stop();
         return;
       }
@@ -196,7 +198,8 @@ module.exports = {
           .setColor(0x57F287)
           .addFields({ name: 'New Balance', value: `$${user.balance}`, inline: true });
 
-        await i.update({ embeds: [finalEmbed], components: [] });
+        await i.deferUpdate();
+        await interaction.editReply({ embeds: [finalEmbed], components: [] });
         return;
       }
 
@@ -216,7 +219,7 @@ module.exports = {
         
         // Reveal all mines
         for (let r = 0; r < GRID_SIZE; r++) {
-          for (let c = 0; c < GRID_SIZE; c++) {
+          for (let c = 0; c < GRID_COLS; c++) {
             if (game.minefield[r][c]) {
               game.revealed[r][c] = 'mine';
             }
@@ -240,7 +243,8 @@ module.exports = {
           .addFields({ name: 'New Balance', value: `$${user.balance}`, inline: true });
 
         const finalButtons = createButtons(game.revealed, true);
-        await i.update({ embeds: [loseEmbed], components: finalButtons });
+        await i.deferUpdate();
+        await interaction.editReply({ embeds: [loseEmbed], components: finalButtons });
         return;
       }
 
@@ -275,7 +279,8 @@ module.exports = {
           .setDisabled(false)
       );
 
-      await i.update({ embeds: [updatedEmbed], components: [...updatedButtons, updatedCashOut] });
+      await i.deferUpdate();
+      await interaction.editReply({ embeds: [updatedEmbed], components: [...updatedButtons, updatedCashOut] });
 
       // Check if all safe tiles found
       if (game.safeTiles === game.totalSafe) {
@@ -296,7 +301,8 @@ module.exports = {
           .setColor(0xFFD700)
           .addFields({ name: 'New Balance', value: `$${user.balance}`, inline: true });
 
-        await interaction.followUp({ embeds: [winEmbed] });
+        // Update the message one final time with the win embed
+        await interaction.editReply({ embeds: [winEmbed], components: [] });
       }
     });
 
