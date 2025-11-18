@@ -2,6 +2,15 @@
 
 This is the backend API server that handles code generation for Discord users and code redemption for Roblox servers.
 
+## Storage Options
+
+This backend supports two storage options:
+
+1. **JSON File Storage** (`index.js`) - Simple, file-based storage. Good for small servers.
+2. **MongoDB Storage** (`index-mongodb.js`) - Database storage. **Recommended for production** and servers with many users.
+
+> **💡 For better scalability and performance with many users, see [MONGODB_MIGRATION.md](./MONGODB_MIGRATION.md) to switch to MongoDB.**
+
 ## Features
 
 - **POST /create-code** - Generate unique codes for Discord users
