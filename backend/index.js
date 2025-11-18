@@ -31,11 +31,15 @@ async function loadData() {
     if (!parsed.codes || typeof parsed.codes !== 'object') {
       parsed.codes = Object.create(null);
     }
+    // Ensure redeemedUsers array exists
+    if (!parsed.redeemedUsers || !Array.isArray(parsed.redeemedUsers)) {
+      parsed.redeemedUsers = [];
+    }
     return parsed;
   } catch (error) {
     if (error.code === 'ENOENT') {
       // File doesn't exist, return empty data with null prototype object
-      return { codes: Object.create(null) };
+      return { codes: Object.create(null), redeemedUsers: [] };
     }
     throw error;
   }
@@ -171,6 +175,14 @@ app.post('/redeem-code', async (req, res) => {
 
     const data = await loadData();
     
+    // Check if this user has already redeemed any code
+    if (data.redeemedUsers && data.redeemedUsers.includes(robloxUserId)) {
+      return res.status(400).json({ 
+        error: 'user_already_redeemed', 
+        message: 'You have already redeemed a code and cannot redeem another one'
+      });
+    }
+    
     // Use Object.prototype.hasOwnProperty to safely check for key existence
     if (!Object.prototype.hasOwnProperty.call(data.codes, normalizedCode)) {
       return res.status(404).json({ 
@@ -208,6 +220,15 @@ app.post('/redeem-code', async (req, res) => {
     
     // Update the code in the data structure
     data.codes[normalizedCode] = updatedCodeData;
+    
+    // Add user to redeemed users list
+    if (!data.redeemedUsers) {
+      data.redeemedUsers = [];
+    }
+    if (!data.redeemedUsers.includes(robloxUserId)) {
+      data.redeemedUsers.push(robloxUserId);
+    }
+    
     await saveData(data);
 
     console.log(`✅ Code redeemed: ${normalizedCode} by Roblox user ${robloxUserId}`);

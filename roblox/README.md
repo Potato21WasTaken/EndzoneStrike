@@ -73,6 +73,8 @@ local function onCodeEntered(player, code)
 			-- (implement your own notification system)
 			if errorMessage == "This code has already been redeemed" then
 				print("This code has already been used!")
+			elseif errorMessage == "You have already redeemed a code and cannot redeem another one" then
+				print("You have already redeemed a code!")
 			elseif errorMessage == "Invalid code" then
 				print("Invalid code. Please check and try again.")
 			else
@@ -318,6 +320,7 @@ The module handles several error cases:
 | `"Code cannot be empty"` | The code string is empty |
 | `"Invalid code"` | Code doesn't exist in the database |
 | `"This code has already been redeemed"` | Code was already used |
+| `"You have already redeemed a code and cannot redeem another one"` | User has already redeemed a code before |
 | `"Server authentication failed"` | API key is invalid |
 | `"Failed to connect to redemption server"` | Network error or backend is down |
 

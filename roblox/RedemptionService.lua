@@ -126,6 +126,8 @@ function RedemptionService.RedeemCode(player, code)
 				if parseSuccess and errorData.error then
 					if errorData.error == "code_already_used" then
 						errorMsg = "This code has already been redeemed"
+					elseif errorData.error == "user_already_redeemed" then
+						errorMsg = "You have already redeemed a code and cannot redeem another one"
 					elseif response.StatusCode == 404 then
 						errorMsg = "Invalid code"
 					elseif response.StatusCode == 403 then
