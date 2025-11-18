@@ -22,4 +22,4 @@ build/
 *.swp
 
 # Backend data
-backend/data.json
+backend/data.jsonbackend/*.backup

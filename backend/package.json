@@ -7,13 +7,18 @@
     "start": "node index.js",
     "dev": "node index.js"
   },
-  "keywords": ["discord", "roblox", "api"],
+  "keywords": [
+    "discord",
+    "roblox",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "nanoid": "^3.3.7",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mongoose": "^8.20.0",
+    "nanoid": "^3.3.7"
   }
 }

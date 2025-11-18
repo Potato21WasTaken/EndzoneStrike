@@ -1,13 +1,13 @@
 const express = require('express');
-const fs = require('fs').promises;
-const path = require('path');
+const mongoose = require('mongoose');
 const { customAlphabet } = require('nanoid');
 const cors = require('cors');
 require('dotenv').config();
 
+const Code = require('./models/Code');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
 
 // Generate uppercase alphanumeric codes
 const generateCode = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 8);
@@ -22,37 +22,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// Load data from file
-async function loadData() {
-  try {
-    const data = await fs.readFile(DATA_FILE, 'utf8');
-    const parsed = JSON.parse(data);
-    // Ensure codes object exists and is safe
-    if (!parsed.codes || typeof parsed.codes !== 'object') {
-      parsed.codes = Object.create(null);
-    }
-    // Ensure redeemedUsers array exists
-    if (!parsed.redeemedUsers || !Array.isArray(parsed.redeemedUsers)) {
-      parsed.redeemedUsers = [];
-    }
-    return parsed;
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      // File doesn't exist, return empty data with null prototype object
-      return { codes: Object.create(null), redeemedUsers: [] };
-    }
-    throw error;
-  }
-}
-
-// Save data to file
-async function saveData(data) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
-}
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/endzone-strike', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  console.log('✅ Connected to MongoDB');
+})
+.catch((error) => {
+  console.error('❌ MongoDB connection error:', error);
+  process.exit(1);
+});
 
 // Generate a unique code
 async function generateUniqueCode(length = 8) {
-  const data = await loadData();
   const codeGenerator = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', length);
   
   let attempts = 0;
@@ -60,7 +44,8 @@ async function generateUniqueCode(length = 8) {
   
   while (attempts < maxAttempts) {
     const code = codeGenerator();
-    if (!data.codes[code]) {
+    const exists = await Code.findOne({ code });
+    if (!exists) {
       return code;
     }
     attempts++;
@@ -110,16 +95,15 @@ app.post('/create-code', async (req, res) => {
     const codeLength = length && length >= 6 && length <= 16 ? length : 8;
     const code = await generateUniqueCode(codeLength);
     
-    // Store the code
-    const data = await loadData();
-    data.codes[code] = {
+    // Store the code in MongoDB
+    await Code.create({
+      code,
       discordId,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
       redeemed: false,
       robloxUserId: null,
       redeemedAt: null
-    };
-    await saveData(data);
+    });
 
     console.log(`✅ Code created: ${code} for Discord user ${discordId}`);
     
@@ -162,7 +146,7 @@ app.post('/redeem-code', async (req, res) => {
       });
     }
 
-    // Normalize and validate code format (prevent prototype pollution)
+    // Normalize and validate code format
     const normalizedCode = code.toUpperCase().trim();
     
     // Reject codes that could be prototype pollution attempts
@@ -173,25 +157,21 @@ app.post('/redeem-code', async (req, res) => {
       });
     }
 
-    const data = await loadData();
-    
     // Check if this user has already redeemed any code
-    if (data.redeemedUsers && data.redeemedUsers.includes(robloxUserId)) {
+    const existingRedemption = await Code.findOne({ 
+      robloxUserId, 
+      redeemed: true 
+    });
+    
+    if (existingRedemption) {
       return res.status(400).json({ 
         error: 'user_already_redeemed', 
         message: 'You have already redeemed a code and cannot redeem another one'
       });
     }
     
-    // Use Object.prototype.hasOwnProperty to safely check for key existence
-    if (!Object.prototype.hasOwnProperty.call(data.codes, normalizedCode)) {
-      return res.status(404).json({ 
-        error: 'Not Found', 
-        message: 'Code not found' 
-      });
-    }
-    
-    const codeData = data.codes[normalizedCode];
+    // Find the code
+    const codeData = await Code.findOne({ code: normalizedCode });
     
     if (!codeData) {
       return res.status(404).json({ 
@@ -209,27 +189,11 @@ app.post('/redeem-code', async (req, res) => {
       });
     }
 
-    // Mark as redeemed by creating a new object (prevents prototype pollution)
-    const updatedCodeData = {
-      discordId: codeData.discordId,
-      createdAt: codeData.createdAt,
-      redeemed: true,
-      robloxUserId: robloxUserId,
-      redeemedAt: new Date().toISOString()
-    };
-    
-    // Update the code in the data structure
-    data.codes[normalizedCode] = updatedCodeData;
-    
-    // Add user to redeemed users list
-    if (!data.redeemedUsers) {
-      data.redeemedUsers = [];
-    }
-    if (!data.redeemedUsers.includes(robloxUserId)) {
-      data.redeemedUsers.push(robloxUserId);
-    }
-    
-    await saveData(data);
+    // Mark as redeemed
+    codeData.redeemed = true;
+    codeData.robloxUserId = robloxUserId;
+    codeData.redeemedAt = new Date();
+    await codeData.save();
 
     console.log(`✅ Code redeemed: ${normalizedCode} by Roblox user ${robloxUserId}`);
 
@@ -237,10 +201,10 @@ app.post('/redeem-code', async (req, res) => {
     res.status(200).json({ 
       ok: true, 
       reward: {
-        discordId: updatedCodeData.discordId,
+        discordId: codeData.discordId,
         robloxUserId,
         code: normalizedCode,
-        redeemedAt: updatedCodeData.redeemedAt,
+        redeemedAt: codeData.redeemedAt,
         // Add your reward logic here
         coins: 1000,
         items: []
@@ -279,17 +243,14 @@ app.get('/code-status', async (req, res) => {
       });
     }
 
-    const data = await loadData();
+    const codeData = await Code.findOne({ code: normalizedCode });
     
-    // Use Object.prototype.hasOwnProperty to safely check for key existence
-    if (!Object.prototype.hasOwnProperty.call(data.codes, normalizedCode)) {
+    if (!codeData) {
       return res.status(404).json({ 
         error: 'Not Found', 
         message: 'Code not found' 
       });
     }
-    
-    const codeData = data.codes[normalizedCode];
 
     // Return limited information (don't expose sensitive data)
     res.status(200).json({
@@ -309,7 +270,12 @@ app.get('/code-status', async (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  res.status(200).json({ 
+    status: 'ok', 
+    database: dbStatus,
+    timestamp: new Date().toISOString() 
+  });
 });
 
 // 404 handler
@@ -317,62 +283,11 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not Found', message: 'Endpoint not found' });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error in request:', err);
-  
-  // Log error details
-  console.error(`[${new Date().toISOString()}] ERROR:`, {
-    method: req.method,
-    path: req.path,
-    error: err.message,
-    stack: err.stack
-  });
-  
-  res.status(500).json({ 
-    error: 'Internal Server Error', 
-    message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message 
-  });
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.error('❌ UNCAUGHT EXCEPTION:', err);
-  console.error('Stack:', err.stack);
-  // In production, you might want to gracefully shutdown here
-  // process.exit(1);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ UNHANDLED REJECTION at:', promise);
-  console.error('Reason:', reason);
-});
-
-// Handle process termination signals
-process.on('SIGINT', () => {
-  console.log('\n🛑 Backend API received SIGINT, shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  console.log('\n🛑 Backend API received SIGTERM, shutting down gracefully...');
-  process.exit(0);
-});
-
 // Start server
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`🚀 Backend API running on port ${PORT}`);
   console.log(`📝 Environment:`);
   console.log(`   - BOT_SECRET: ${process.env.BOT_SECRET ? '✅ Set' : '❌ Missing'}`);
   console.log(`   - SERVER_SECRET: ${process.env.SERVER_SECRET ? '✅ Set' : '❌ Missing'}`);
-});
-
-// Handle server errors
-server.on('error', (err) => {
-  console.error('❌ Server error:', err);
-  if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use`);
-    process.exit(1);
-  }
+  console.log(`   - MONGO_URI: ${process.env.MONGO_URI ? '✅ Set' : '❌ Missing'}`);
 });

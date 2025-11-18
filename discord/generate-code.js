@@ -24,12 +24,31 @@ const BOT_SECRET = process.env.BOT_SECRET;
  */
 async function fetchBackend(endpoint, options = {}) {
   const response = await fetch(`${BACKEND_URL}${endpoint}`, options);
-  const data = await response.json();
   
+  // Read response body as text first (can only read once)
+  const responseText = await response.text();
+  
+  // Check if response is ok before parsing
   if (!response.ok) {
-    throw new Error(data.message || `HTTP ${response.status}: ${data.error}`);
+    let errorMessage = `HTTP ${response.status}`;
+    
+    // Try to parse as JSON first
+    try {
+      const data = JSON.parse(responseText);
+      errorMessage = data.message || data.error || errorMessage;
+    } catch (e) {
+      // Response is not JSON (might be HTML error page)
+      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+        errorMessage = `Backend server error (${response.status}). Is the backend running?`;
+      } else if (responseText) {
+        errorMessage = responseText;
+      }
+    }
+    throw new Error(errorMessage);
   }
   
+  // Parse successful response
+  const data = JSON.parse(responseText);
   return data;
 }
 
