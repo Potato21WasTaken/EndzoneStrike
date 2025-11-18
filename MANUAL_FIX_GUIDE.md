@@ -29,25 +29,30 @@ async function fetchBackend(endpoint, options = {}) {
 async function fetchBackend(endpoint, options = {}) {
   const response = await fetch(`${BACKEND_URL}${endpoint}`, options);
   
+  // Read response body as text first (can only read once)
+  const responseText = await response.text();
+  
   // Check if response is ok before parsing
   if (!response.ok) {
     let errorMessage = `HTTP ${response.status}`;
+    
+    // Try to parse as JSON first
     try {
-      const data = await response.json();
+      const data = JSON.parse(responseText);
       errorMessage = data.message || data.error || errorMessage;
     } catch (e) {
       // Response is not JSON (might be HTML error page)
-      const text = await response.text();
-      if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
         errorMessage = `Backend server error (${response.status}). Is the backend running?`;
-      } else {
-        errorMessage = text || errorMessage;
+      } else if (responseText) {
+        errorMessage = responseText;
       }
     }
     throw new Error(errorMessage);
   }
   
-  const data = await response.json();
+  // Parse successful response
+  const data = JSON.parse(responseText);
   return data;
 }
 ```
@@ -56,7 +61,8 @@ async function fetchBackend(endpoint, options = {}) {
 
 ## What This Fixes
 - **Before**: When the backend wasn't running or returned an HTML error page, the code tried to parse HTML as JSON and crashed with "Unexpected token '<'"
-- **After**: Checks if the response is OK first, and if not, tries to parse the error message properly. If it's HTML, shows a helpful message instead of crashing.
+- **After**: Reads the response body once as text, then parses it appropriately. If it's HTML, shows a helpful message instead of crashing.
+- **Also fixes**: "Body has already been read" error that occurred when trying to read the response multiple times
 
 ## How to Apply Manually
 1. Open `discord/generate-code.js` in your code editor
