@@ -147,6 +147,25 @@ RedemptionService.RedeemCode(player, code)
 | `BACKEND_URL` | Discord bot `.env` | URL where the backend API is hosted |
 | `PORT` | Backend `.env` | Port for the backend server (default: 3000) |
 | `CLAIM_CHANNEL_ID` | Discord bot `.env` | (Optional) Channel ID for posting the generate button |
+| `ERROR_LOG_CHANNEL_ID` | Discord bot `.env` | **Required** for error logging - Discord channel ID where all errors will be logged |
+| `ERROR_REPORTER_NAME` | Discord bot `.env` | (Optional) Custom bot name in error messages (default: "EndzoneStrike Errors") |
+
+### Error Logging
+
+The bot includes a comprehensive error logging system that tracks all errors and bot downtime. See [ERROR_LOGGING_IMPLEMENTATION.md](ERROR_LOGGING_IMPLEMENTATION.md) for full details.
+
+**Quick Setup:**
+1. Create a dedicated channel in your Discord server (e.g., `#error-logs`)
+2. Copy the channel ID and add it to `.env` as `ERROR_LOG_CHANNEL_ID`
+3. All errors, exceptions, and bot lifecycle events will be logged to this channel
+
+**What Gets Logged:**
+- ✅ Bot startup and shutdown events
+- ❌ All command execution errors with context
+- ❌ Database connection issues
+- ❌ Discord client errors and disconnections
+- ❌ Unhandled exceptions and promise rejections
+- ❌ External API errors (RSS monitoring, etc.)
 
 ### How It Works
 
