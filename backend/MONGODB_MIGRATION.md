@@ -218,6 +218,37 @@ db.codes.find({ redeemed: true })
 db.codes.findOne({ robloxUserId: "987654321", redeemed: true })
 ```
 
+## Security Best Practices
+
+### Rate Limiting (Recommended for Production)
+
+For production deployments, consider adding rate limiting to prevent abuse:
+
+```bash
+npm install express-rate-limit
+```
+
+Then in `index-mongodb.js`:
+```javascript
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+app.use('/create-code', limiter);
+app.use('/redeem-code', limiter);
+```
+
+### Other Security Measures
+
+- Use HTTPS in production
+- Keep BOT_SECRET and SERVER_SECRET secure
+- Regularly update dependencies
+- Monitor for suspicious activity
+- Consider IP whitelisting for sensitive endpoints
+
 ## Troubleshooting
 
 ### "Failed to connect to MongoDB"
