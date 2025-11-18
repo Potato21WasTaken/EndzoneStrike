@@ -87,7 +87,33 @@ async function checkFeeds(client) {
       }
 
     } catch (err) {
-      console.error(`❌ Error checking ${feed.name}:`, err.response?.data || err.message);
+      const errorMsg = `❌ Error checking ${feed.name}: ${err.response?.data ? JSON.stringify(err.response.data) : err.message}`;
+      console.error(errorMsg);
+      
+      // Try to get the error reporter if available
+      try {
+        const initErrorReporter = require('./utils/error-reporter');
+        if (process.env.ERROR_LOG_CHANNEL_ID && client) {
+          const reporter = initErrorReporter({
+            client,
+            channelId: process.env.ERROR_LOG_CHANNEL_ID,
+            botName: process.env.ERROR_REPORTER_NAME || 'EndzoneStrike Errors',
+            rateLimitMs: 5000
+          });
+          
+          const errorContext = [
+            `Event: RSS Feed Check Error`,
+            `Platform: ${feed.name}`,
+            `Username: ${feed.username}`,
+            `Error: ${err.stack || err.message || String(err)}`,
+            err.response?.data ? `API Response: ${JSON.stringify(err.response.data, null, 2)}` : '',
+          ].filter(Boolean).join('\n');
+          
+          reporter.report('RSS Monitor Error', errorContext).catch(() => {});
+        }
+      } catch (reporterErr) {
+        // Silently fail if error reporter is not available
+      }
     }
   }
 }

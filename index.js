@@ -36,6 +36,38 @@ mongoose.connection.on('connected', () => {
 });
 mongoose.connection.on('error', err => {
   console.error('❌ MongoDB connection error:', err);
+  
+  // Initialize reporter first if not already done
+  let localReporter = reporter;
+  if (!localReporter && process.env.ERROR_LOG_CHANNEL_ID) {
+    try {
+      const initErrorReporter = require('./utils/error-reporter');
+      localReporter = initErrorReporter({
+        client,
+        channelId: process.env.ERROR_LOG_CHANNEL_ID,
+        botName: process.env.ERROR_REPORTER_NAME || 'EndzoneStrike Errors',
+        rateLimitMs: 5000
+      });
+    } catch {}
+  }
+  
+  if (typeof localReporter?.report === 'function') {
+    localReporter.report('MongoDB Connection Error', err.stack || err.message || String(err)).catch(() => {});
+  }
+});
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB disconnected!');
+  
+  if (typeof reporter?.report === 'function') {
+    reporter.report('MongoDB Disconnected', 'MongoDB connection was lost').catch(() => {});
+  }
+});
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected!');
+  
+  if (typeof reporter?.report === 'function') {
+    reporter.report('MongoDB Reconnected', 'MongoDB connection was restored').catch(() => {});
+  }
 });
 
 // === Client Setup ===
@@ -98,9 +130,9 @@ if (claimChannelId) {
   sendGenerateMessage(client, claimChannelId).catch(console.error);
 }
 
-  // optional: only run the startup test once the client is ready so the reporter can fetch the channel
+  // Report bot startup
   if (typeof reporter?.report === 'function') {
-    reporter.report('Startup test', 'Error reporter initialized').catch(() => {});
+    reporter.report('Bot Started', `Bot ${client.user.tag} successfully logged in and is now online.`).catch(() => {});
   }
 
   // ✅ Set Bot Status
@@ -163,66 +195,82 @@ function clearOldOffenses(data) {
 }
 
 client.on('messageCreate', async (message) => {
-  if (
-    message.author.bot ||
-    !message.guild ||
-    !message.mentions.users.size ||
-    message.content.startsWith('/')
-  ) return;
+  try {
+    if (
+      message.author.bot ||
+      !message.guild ||
+      !message.mentions.users.size ||
+      message.content.startsWith('/')
+    ) return;
 
-  // Ignore replies (don't moderate if this message is a reply)
-  if (message.type === 19 || message.reference) return;
+    // Ignore replies (don't moderate if this message is a reply)
+    if (message.type === 19 || message.reference) return;
 
-  const staffRole = message.guild.roles.cache.get(process.env.VERIFIED_STAFF_ROLE_ID);
-  const isVerifiedStaff = staffRole && message.member.roles.cache.has(staffRole.id);
+    const staffRole = message.guild.roles.cache.get(process.env.VERIFIED_STAFF_ROLE_ID);
+    const isVerifiedStaff = staffRole && message.member.roles.cache.has(staffRole.id);
 
-  const pingBypassRole = message.guild.roles.cache.get(PING_BYPASS_ROLE_ID);
-  const isPingBypass = pingBypassRole && message.member.roles.cache.has(pingBypassRole.id);
+    const pingBypassRole = message.guild.roles.cache.get(PING_BYPASS_ROLE_ID);
+    const isPingBypass = pingBypassRole && message.member.roles.cache.has(pingBypassRole.id);
 
-  if (isVerifiedStaff || isPingBypass) return;
+    if (isVerifiedStaff || isPingBypass) return;
 
-  for (const [, user] of message.mentions.users) {
-    const mentionedMember = await message.guild.members.fetch(user.id).catch(() => null);
-    if (!mentionedMember) continue;
+    for (const [, user] of message.mentions.users) {
+      const mentionedMember = await message.guild.members.fetch(user.id).catch(() => null);
+      if (!mentionedMember) continue;
 
-    if (mentionedMember.roles.cache.has(NO_PING_ROLE_ID)) {
-      await message.delete().catch(console.error);
+      if (mentionedMember.roles.cache.has(NO_PING_ROLE_ID)) {
+        await message.delete().catch(console.error);
 
-      // ⏳ Load and clean up offense records
-      let offenseData = clearOldOffenses(loadOffenseData());
-      const userId = message.author.id;
-      const record = offenseData[userId] || { count: 0, lastOffense: 0 };
+        // ⏳ Load and clean up offense records
+        let offenseData = clearOldOffenses(loadOffenseData());
+        const userId = message.author.id;
+        const record = offenseData[userId] || { count: 0, lastOffense: 0 };
 
-      record.count += 1;
-      record.lastOffense = Date.now();
-      offenseData[userId] = record;
-      saveOffenseData(offenseData);
-
-      const count = record.count;
-
-      if (count === 1) {
-        await message.channel.send({
-          content: `${message.author}, please refrain from pinging users with the **Don't Ping** role. If you continue, you will be moderated by staff.`,
-          allowedMentions: { users: [] }
-        });
-      } else if (count === 2) {
-        await message.channel.send({
-          content: `${message.author}, this is your second warning. You will be timed out the next time you ping a user with the **Don't Ping** role.`,
-          allowedMentions: { users: [] }
-        });
-      } else if (count >= 3) {
-        await message.member.timeout(600_000, 'Repeated pings to protected members').catch(console.error);
-        await message.channel.send({
-          content: `${message.author}, you have been timed out for repeatedly pinging users with the **Don't Ping** role.`,
-          allowedMentions: { users: [] }
-        });
-
-        // ♻️ Reset their offense record after punishment
-        offenseData[userId] = { count: 0, lastOffense: Date.now() };
+        record.count += 1;
+        record.lastOffense = Date.now();
+        offenseData[userId] = record;
         saveOffenseData(offenseData);
-      }
 
-      break;
+        const count = record.count;
+
+        if (count === 1) {
+          await message.channel.send({
+            content: `${message.author}, please refrain from pinging users with the **Don't Ping** role. If you continue, you will be moderated by staff.`,
+            allowedMentions: { users: [] }
+          });
+        } else if (count === 2) {
+          await message.channel.send({
+            content: `${message.author}, this is your second warning. You will be timed out the next time you ping a user with the **Don't Ping** role.`,
+            allowedMentions: { users: [] }
+          });
+        } else if (count >= 3) {
+          await message.member.timeout(600_000, 'Repeated pings to protected members').catch(console.error);
+          await message.channel.send({
+            content: `${message.author}, you have been timed out for repeatedly pinging users with the **Don't Ping** role.`,
+            allowedMentions: { users: [] }
+          });
+
+          // ♻️ Reset their offense record after punishment
+          offenseData[userId] = { count: 0, lastOffense: Date.now() };
+          saveOffenseData(offenseData);
+        }
+
+        break;
+      }
+    }
+  } catch (err) {
+    console.error('Error in NoPing protection handler:', err);
+    
+    // Report error to error logging channel
+    if (typeof reporter?.report === 'function') {
+      const errorContext = [
+        `Event: messageCreate (NoPing protection)`,
+        `Message: ${message.content?.substring(0, 100) || 'N/A'}`,
+        `Author: ${message.author?.tag || 'Unknown'} (${message.author?.id || 'N/A'})`,
+        `Guild: ${message.guild?.name || 'Unknown'} (${message.guild?.id || 'N/A'})`,
+        `Error: ${err.stack || err.message || String(err)}`,
+      ].join('\n');
+      reporter.report('NoPing Protection Error', errorContext).catch(() => {});
     }
   }
 });
@@ -238,10 +286,23 @@ client.on('interactionCreate', async (interaction) => {
       await command.execute(interaction, client);
     } catch (err) {
       console.error(err);
+      
+      // Report error to error logging channel
+      if (typeof reporter?.report === 'function') {
+        const errorContext = [
+          `Command: /${interaction.commandName}`,
+          `User: ${interaction.user.tag} (${interaction.user.id})`,
+          `Guild: ${interaction.guild?.name || 'DM'} (${interaction.guild?.id || 'N/A'})`,
+          `Channel: ${interaction.channel?.name || 'Unknown'} (${interaction.channel?.id || 'N/A'})`,
+          `Error: ${err.stack || err.message || String(err)}`,
+        ].join('\n');
+        reporter.report('Command Execution Error', errorContext).catch(() => {});
+      }
+      
       if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ content: 'An error occurred.' });
+        await interaction.editReply({ content: 'An error occurred.' }).catch(() => {});
       } else {
-        await interaction.reply({ content: 'An error occurred.', ephemeral: false });
+        await interaction.reply({ content: 'An error occurred.', ephemeral: false }).catch(() => {});
       }
     }
   }
@@ -295,6 +356,18 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], ephemeral: true });
     } catch (err) {
       console.error(err);
+      
+      // Report error to error logging channel
+      if (typeof reporter?.report === 'function') {
+        const errorContext = [
+          `Interaction: Shop Buy Button`,
+          `User: ${interaction.user.tag} (${interaction.user.id})`,
+          `CustomId: ${interaction.customId}`,
+          `Error: ${err.stack || err.message || String(err)}`,
+        ].join('\n');
+        reporter.report('Shop Purchase Error', errorContext).catch(() => {});
+      }
+      
       await interaction.reply({ content: 'An error occurred.', ephemeral: true }).catch(() => {});
     }
     return;
@@ -358,6 +431,18 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.update({ embeds: [successEmbed], components: [] });
     } catch (err) {
       console.error(err);
+      
+      // Report error to error logging channel
+      if (typeof reporter?.report === 'function') {
+        const errorContext = [
+          `Interaction: Shop Confirm Button`,
+          `User: ${interaction.user.tag} (${interaction.user.id})`,
+          `CustomId: ${interaction.customId}`,
+          `Error: ${err.stack || err.message || String(err)}`,
+        ].join('\n');
+        reporter.report('Shop Confirmation Error', errorContext).catch(() => {});
+      }
+      
       await interaction.update({ content: 'An error occurred during purchase.', embeds: [], components: [] }).catch(() => {});
     }
     return;
@@ -372,138 +457,172 @@ client.on('interactionCreate', async (interaction) => {
   // === Handle Suggestion Buttons ===
   if (interaction.isButton()) {
     (async () => {
-      const [action, suggesterId] = interaction.customId.split('_');
-      
-      // Only handle suggestion buttons (accept, decline, edit, notes)
-      if (!['accept', 'decline', 'edit', 'notes'].includes(action)) {
-        return; // Not a suggestion button, ignore
-      }
-      
-      const adminRole = interaction.guild.roles.cache.get(process.env.ADMIN_ROLE_ID);
-
-      if (!adminRole) {
-        try {
-          return await interaction.reply({
-            content: '❌ The Administrator role (by ID) could not be found. Check your ADMIN_ROLE_ID in .env.',
-            ephemeral: true
-          });
-        } catch {}
-      }
-
-      const memberRoles = interaction.member.roles.cache;
-      const hasAdminOrHigher = memberRoles.some(role => role.position >= adminRole.position);
-
-      // Only allow the suggester to edit, otherwise require admin+ role
-      const isSuggester = interaction.user.id === suggesterId;
-      if (action === 'edit' && !isSuggester) {
-        try {
-          return await interaction.reply({ content: '❌ Only the suggestion author can edit it.', ephemeral: true });
-        } catch {}
-      }
-
-      if (['accept', 'decline', 'notes'].includes(action) && !hasAdminOrHigher) {
-        try {
-          return await interaction.reply({
-            content: '❌ Only users with the "Administrator" role or higher can use this.',
-            ephemeral: true
-          });
-        } catch {}
-      }
-
-      const embed = interaction.message.embeds[0];
-      if (!embed) {
-        try {
-          return await interaction.reply({
-            content: '❌ This suggestion message has no embed to update.',
-            ephemeral: true
-          });
-        } catch (err) {
-          if (err.code !== 10062) console.error(err);
-          return;
+      try {
+        const [action, suggesterId] = interaction.customId.split('_');
+        
+        // Only handle suggestion buttons (accept, decline, edit, notes)
+        if (!['accept', 'decline', 'edit', 'notes'].includes(action)) {
+          return; // Not a suggestion button, ignore
         }
-      }
-      const updatedEmbed = { ...embed.data };
+        
+        const adminRole = interaction.guild.roles.cache.get(process.env.ADMIN_ROLE_ID);
 
-      if (action === 'accept') {
-        updatedEmbed.color = 0x00ff00;
-        updatedEmbed.footer = { text: `Accepted by ${interaction.user.tag}` };
-        await interaction.update({ embeds: [updatedEmbed], components: [] });
+        if (!adminRole) {
+          try {
+            return await interaction.reply({
+              content: '❌ The Administrator role (by ID) could not be found. Check your ADMIN_ROLE_ID in .env.',
+              ephemeral: true
+            });
+          } catch {}
+        }
 
-      } else if (action === 'decline') {
-        updatedEmbed.color = 0xff0000;
-        updatedEmbed.footer = { text: `Declined by ${interaction.user.tag}` };
-        await interaction.update({ embeds: [updatedEmbed], components: [] });
+        const memberRoles = interaction.member.roles.cache;
+        const hasAdminOrHigher = memberRoles.some(role => role.position >= adminRole.position);
 
-      } else if (action === 'edit') {
-        const modal = new ModalBuilder()
-          .setCustomId(`edit_modal_${interaction.message.id}`)
-          .setTitle('Edit Suggestion')
-          .addComponents(
-            new ActionRowBuilder().addComponents(
-              new TextInputBuilder()
-                .setCustomId('suggestion_text')
-                .setLabel('New suggestion text')
-                .setStyle(TextInputStyle.Paragraph)
-                .setRequired(true)
-            )
-          );
-        await interaction.showModal(modal);
+        // Only allow the suggester to edit, otherwise require admin+ role
+        const isSuggester = interaction.user.id === suggesterId;
+        if (action === 'edit' && !isSuggester) {
+          try {
+            return await interaction.reply({ content: '❌ Only the suggestion author can edit it.', ephemeral: true });
+          } catch {}
+        }
 
-      } else if (action === 'notes') {
-        const modal = new ModalBuilder()
-          .setCustomId(`notes_modal_${interaction.message.id}`)
-          .setTitle('Staff Notes')
-          .addComponents(
-            new ActionRowBuilder().addComponents(
-              new TextInputBuilder()
-                .setCustomId('note_content')
-                .setLabel('Enter a staff note')
-                .setStyle(TextInputStyle.Paragraph)
-                .setRequired(true)
-            )
-          );
-        await interaction.showModal(modal);
+        if (['accept', 'decline', 'notes'].includes(action) && !hasAdminOrHigher) {
+          try {
+            return await interaction.reply({
+              content: '❌ Only users with the "Administrator" role or higher can use this.',
+              ephemeral: true
+            });
+          } catch {}
+        }
+
+        const embed = interaction.message.embeds[0];
+        if (!embed) {
+          try {
+            return await interaction.reply({
+              content: '❌ This suggestion message has no embed to update.',
+              ephemeral: true
+            });
+          } catch (err) {
+            if (err.code !== 10062) console.error(err);
+            return;
+          }
+        }
+        const updatedEmbed = { ...embed.data };
+
+        if (action === 'accept') {
+          updatedEmbed.color = 0x00ff00;
+          updatedEmbed.footer = { text: `Accepted by ${interaction.user.tag}` };
+          await interaction.update({ embeds: [updatedEmbed], components: [] });
+
+        } else if (action === 'decline') {
+          updatedEmbed.color = 0xff0000;
+          updatedEmbed.footer = { text: `Declined by ${interaction.user.tag}` };
+          await interaction.update({ embeds: [updatedEmbed], components: [] });
+
+        } else if (action === 'edit') {
+          const modal = new ModalBuilder()
+            .setCustomId(`edit_modal_${interaction.message.id}`)
+            .setTitle('Edit Suggestion')
+            .addComponents(
+              new ActionRowBuilder().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('suggestion_text')
+                  .setLabel('New suggestion text')
+                  .setStyle(TextInputStyle.Paragraph)
+                  .setRequired(true)
+              )
+            );
+          await interaction.showModal(modal);
+
+        } else if (action === 'notes') {
+          const modal = new ModalBuilder()
+            .setCustomId(`notes_modal_${interaction.message.id}`)
+            .setTitle('Staff Notes')
+            .addComponents(
+              new ActionRowBuilder().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('note_content')
+                  .setLabel('Enter a staff note')
+                  .setStyle(TextInputStyle.Paragraph)
+                  .setRequired(true)
+              )
+            );
+          await interaction.showModal(modal);
+        }
+      } catch (err) {
+        console.error(err);
+        
+        // Report error to error logging channel
+        if (typeof reporter?.report === 'function') {
+          const errorContext = [
+            `Interaction: Suggestion Button`,
+            `User: ${interaction.user.tag} (${interaction.user.id})`,
+            `CustomId: ${interaction.customId}`,
+            `Error: ${err.stack || err.message || String(err)}`,
+          ].join('\n');
+          reporter.report('Suggestion Button Error', errorContext).catch(() => {});
+        }
       }
     })();
   }
 
   // === Handle Modals ===
   if (interaction.isModalSubmit()) {
-    // ✅ Staff Update Modal Handler
-    if (interaction.customId === 'staff_update_modal') {
-      const staffUpdate = require('./commands/staffupdate');
-      return staffUpdate.handleModal(interaction);
-    }
-
-    if (interaction.customId.startsWith('edit_modal') || interaction.customId.startsWith('notes_modal')) {
-      const messageId = interaction.customId.split('_').pop();
-      const message = await interaction.channel.messages.fetch(messageId);
-      const embed = message.embeds[0];
-      if (!embed) {
-        return interaction.reply({ content: '❌ No embed to update.', ephemeral: true });
-      }
-      const updatedEmbed = { ...embed.data };
-
-      if (interaction.customId.startsWith('edit_modal')) {
-        const newText = interaction.fields.getTextInputValue('suggestion_text');
-        updatedEmbed.description = newText;
-        await message.edit({ embeds: [updatedEmbed] });
-        return interaction.reply({ content: '✅ Suggestion updated.', ephemeral: true });
+    try {
+      // ✅ Staff Update Modal Handler
+      if (interaction.customId === 'staff_update_modal') {
+        const staffUpdate = require('./commands/staffupdate');
+        return staffUpdate.handleModal(interaction);
       }
 
-      if (interaction.customId.startsWith('notes_modal')) {
-        const note = interaction.fields.getTextInputValue('note_content');
-        updatedEmbed.fields = updatedEmbed.fields || [];
-        updatedEmbed.fields.push({ name: 'Staff Note', value: note });
-        await message.edit({ embeds: [updatedEmbed] });
-        return interaction.reply({ content: '✅ Note added.', ephemeral: true });
-      }
-    }
+      if (interaction.customId.startsWith('edit_modal') || interaction.customId.startsWith('notes_modal')) {
+        const messageId = interaction.customId.split('_').pop();
+        const message = await interaction.channel.messages.fetch(messageId);
+        const embed = message.embeds[0];
+        if (!embed) {
+          return interaction.reply({ content: '❌ No embed to update.', ephemeral: true });
+        }
+        const updatedEmbed = { ...embed.data };
 
-    // ✅ Verified Staff Modal Handler
-    if (interaction.customId.startsWith('staff_')) {
-      const staffManage = require('./commands/staffmanage');
-      await staffManage.handleModal(interaction);
+        if (interaction.customId.startsWith('edit_modal')) {
+          const newText = interaction.fields.getTextInputValue('suggestion_text');
+          updatedEmbed.description = newText;
+          await message.edit({ embeds: [updatedEmbed] });
+          return interaction.reply({ content: '✅ Suggestion updated.', ephemeral: true });
+        }
+
+        if (interaction.customId.startsWith('notes_modal')) {
+          const note = interaction.fields.getTextInputValue('note_content');
+          updatedEmbed.fields = updatedEmbed.fields || [];
+          updatedEmbed.fields.push({ name: 'Staff Note', value: note });
+          await message.edit({ embeds: [updatedEmbed] });
+          return interaction.reply({ content: '✅ Note added.', ephemeral: true });
+        }
+      }
+
+      // ✅ Verified Staff Modal Handler
+      if (interaction.customId.startsWith('staff_')) {
+        const staffManage = require('./commands/staffmanage');
+        await staffManage.handleModal(interaction);
+      }
+    } catch (err) {
+      console.error(err);
+      
+      // Report error to error logging channel
+      if (typeof reporter?.report === 'function') {
+        const errorContext = [
+          `Interaction: Modal Submit`,
+          `User: ${interaction.user.tag} (${interaction.user.id})`,
+          `CustomId: ${interaction.customId}`,
+          `Error: ${err.stack || err.message || String(err)}`,
+        ].join('\n');
+        reporter.report('Modal Submit Error', errorContext).catch(() => {});
+      }
+      
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: 'An error occurred processing the modal.', ephemeral: true }).catch(() => {});
+      }
     }
   }
 });

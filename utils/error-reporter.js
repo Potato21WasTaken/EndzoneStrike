@@ -109,6 +109,36 @@ module.exports = function initErrorReporter({
     // NOTE: consider process.exit(1) here in production after reporting
   });
 
+  // Track process exit/shutdown
+  process.on('exit', async (code) => {
+    const body = [
+      'Event: process.exit',
+      `Exit Code: ${code}`,
+      `Uptime: ${Math.floor(process.uptime())}s`,
+    ].join('\n\n');
+    // Note: async operations may not complete in exit handler
+    console.log('[error-reporter] Bot process exiting with code:', code);
+  });
+
+  // Track graceful shutdowns
+  process.on('SIGINT', async () => {
+    const body = [
+      'Event: SIGINT (Graceful Shutdown)',
+      'Bot received SIGINT signal (Ctrl+C or process manager shutdown)',
+    ].join('\n\n');
+    await sendToChannel(body, 'shutdown-SIGINT.txt');
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    const body = [
+      'Event: SIGTERM (Graceful Shutdown)',
+      'Bot received SIGTERM signal (process manager shutdown)',
+    ].join('\n\n');
+    await sendToChannel(body, 'shutdown-SIGTERM.txt');
+    process.exit(0);
+  });
+
   // Discord client-level errors
   if (client && typeof client.on === 'function') {
     client.on('error', async (err) => {
@@ -119,6 +149,24 @@ module.exports = function initErrorReporter({
       await sendToChannel(body, 'client.error.txt');
     });
 
+    // Track Discord disconnections
+    client.on('disconnect', async () => {
+      const body = [
+        'Event: client.disconnect',
+        'Discord client disconnected from gateway',
+      ].join('\n\n');
+      await sendToChannel(body, 'client.disconnect.txt');
+    });
+
+    // Track when bot goes offline/resumes
+    client.on('warn', async (info) => {
+      const body = [
+        'Event: client.warn',
+        String(info),
+      ].join('\n\n');
+      await sendToChannel(body, 'client.warn.txt');
+    });
+
     // If using sharding or newer discord.js, capture shard errors
     client.on('shardError', async (error, shardId) => {
       const body = [
@@ -126,6 +174,24 @@ module.exports = function initErrorReporter({
         error && error.stack ? error.stack : String(error),
       ].join('\n\n');
       await sendToChannel(body, `shardError-${shardId}.txt`);
+    });
+
+    // Track shard disconnections
+    client.on('shardDisconnect', async (event, shardId) => {
+      const body = [
+        `Event: client.shardDisconnect (shard ${shardId})`,
+        `Close Event: ${JSON.stringify(event, null, 2)}`,
+      ].join('\n\n');
+      await sendToChannel(body, `shardDisconnect-${shardId}.txt`);
+    });
+
+    // Track shard reconnections
+    client.on('shardReconnecting', async (shardId) => {
+      const body = [
+        `Event: client.shardReconnecting (shard ${shardId})`,
+        'Shard is attempting to reconnect',
+      ].join('\n\n');
+      await sendToChannel(body, `shardReconnecting-${shardId}.txt`);
     });
   }
 

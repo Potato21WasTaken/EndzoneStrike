@@ -296,10 +296,62 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not Found', message: 'Endpoint not found' });
 });
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error in request:', err);
+  
+  // Log error details
+  console.error(`[${new Date().toISOString()}] ERROR:`, {
+    method: req.method,
+    path: req.path,
+    error: err.message,
+    stack: err.stack
+  });
+  
+  res.status(500).json({ 
+    error: 'Internal Server Error', 
+    message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message 
+  });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('❌ UNCAUGHT EXCEPTION:', err);
+  console.error('Stack:', err.stack);
+  // In production, you might want to gracefully shutdown here
+  // process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ UNHANDLED REJECTION at:', promise);
+  console.error('Reason:', reason);
+});
+
+// Handle process termination signals
+process.on('SIGINT', () => {
+  console.log('\n🛑 Backend API received SIGINT, shutting down gracefully...');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Backend API received SIGTERM, shutting down gracefully...');
+  process.exit(0);
+});
+
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Backend API running on port ${PORT}`);
   console.log(`📝 Environment:`);
   console.log(`   - BOT_SECRET: ${process.env.BOT_SECRET ? '✅ Set' : '❌ Missing'}`);
   console.log(`   - SERVER_SECRET: ${process.env.SERVER_SECRET ? '✅ Set' : '❌ Missing'}`);
+});
+
+// Handle server errors
+server.on('error', (err) => {
+  console.error('❌ Server error:', err);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use`);
+    process.exit(1);
+  }
 });
