@@ -31,9 +31,21 @@ Play exciting minigames to earn money! See [MINIGAMES.md](MINIGAMES.md) for deta
 - Aura system
 - Staff management
 - Suggestion system
+- `/stats` - View bot statistics and lines of code
 - And more!
 
 For detailed minigame information, check [MINIGAMES.md](MINIGAMES.md)
+
+## 📊 Project Statistics
+
+The project currently contains **~10,000 lines of code** across JavaScript, Lua, JSON, and Markdown files.
+
+To view detailed line count statistics:
+```bash
+npm run count-lines
+```
+
+Or use the Discord command `/stats` to see bot statistics including lines of code!
 
 ## Discord Code Generation & Roblox Redemption
 
