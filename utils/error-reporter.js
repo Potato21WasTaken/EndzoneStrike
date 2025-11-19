@@ -184,15 +184,6 @@ module.exports = function initErrorReporter({
       ].join('\n\n');
       await sendToChannel(body, `shardDisconnect-${shardId}.txt`);
     });
-
-    // Track shard reconnections
-    client.on('shardReconnecting', async (shardId) => {
-      const body = [
-        `Event: client.shardReconnecting (shard ${shardId})`,
-        'Shard is attempting to reconnect',
-      ].join('\n\n');
-      await sendToChannel(body, `shardReconnecting-${shardId}.txt`);
-    });
   }
 
   // Optionally capture warnings
